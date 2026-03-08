@@ -143,6 +143,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 24,
     alignItems: 'center',
+    paddingBottom: 60, // Push content higher up visually
   },
   headerContainer: {
     marginBottom: 48,
@@ -194,19 +195,19 @@ const styles = StyleSheet.create({
     padding: 16,
     color: '#3E2723',
     fontSize: 16,
-    fontFamily: 'Lora_500Medium',
+    fontFamily: 'Quicksand_600SemiBold',
     marginBottom: 20,
     borderWidth: 1,
     borderColor: '#EAE6DF',
     textAlign: 'center',
   },
   primaryButton: {
-    backgroundColor: '#D0E5C9',
+    backgroundColor: '#8CBDB1', // Darker Teal
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
     marginTop: 8,
-    shadowColor: '#D0E5C9',
+    shadowColor: '#8CBDB1',
     shadowOpacity: 0.3,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 8,
@@ -225,7 +226,7 @@ const styles = StyleSheet.create({
   forgotPasswordText: {
     color: '#C9D6ED',
     fontSize: 14,
-    fontFamily: 'Lora_600SemiBold',
+    fontFamily: 'Quicksand_600SemiBold',
   },
   secondaryButton: {
     marginTop: 20,
@@ -234,6 +235,6 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     color: '#888',
     fontSize: 14,
-    fontFamily: 'Lora_600SemiBold',
+    fontFamily: 'Quicksand_600SemiBold',
   },
 });

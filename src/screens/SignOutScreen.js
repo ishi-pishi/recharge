@@ -62,21 +62,21 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontFamily: 'Lora_700Bold',
+    fontFamily: 'Quicksand_700Bold',
     color: '#3E2723',
     marginBottom: 24,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#666666',
-    fontFamily: 'Lora_600SemiBold',
-    marginBottom: 8,
+    fontSize: 16,
+    color: '#777777',
+    fontFamily: 'Quicksand_600SemiBold',
+    marginTop: 8,
   },
   email: {
     fontSize: 18,
     color: '#3E2723',
-    fontFamily: 'Lora_600SemiBold',
-    marginBottom: 32,
+    fontFamily: 'Quicksand_600SemiBold',
+    marginVertical: 16,
   },
   button: {
     backgroundColor: '#FDFBF7',

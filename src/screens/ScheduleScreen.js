@@ -306,6 +306,16 @@ export default function ScheduleScreen() {
         </View>
       )}
 
+      {timerRunning && (
+        <TouchableOpacity 
+          style={styles.currentSessionButton}
+          onPress={() => setTimerModalVisible(true)}
+        >
+          <Ionicons name="stop-circle-outline" size={20} color="#3E2723" style={{ marginRight: 8 }} />
+          <Text style={styles.currentSessionText}>Current session: {selectedCategory}</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Add Activity Modal */}
       <Modal visible={addModalVisible} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
@@ -505,15 +515,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FDFBF7',
   },
-  inProgressBanner: {
-    backgroundColor: '#D0E5C9',
-    padding: 12,
+  currentSessionButton: {
+    position: 'absolute',
+    bottom: 24,
+    left: 24,
+    backgroundColor: '#8CBDB1', // Teal color
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    shadowColor: '#8CBDB1',
+    shadowOpacity: 0.4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 4,
   },
-  inProgressText: {
+  currentSessionText: {
     color: '#3E2723',
-    fontFamily: 'Lora_700Bold',
+    fontFamily: 'Quicksand_700Bold',
     fontSize: 14,
   },
   header: {
@@ -600,12 +620,12 @@ const styles = StyleSheet.create({
   activityTitle: {
     color: '#3E2723',
     fontSize: 18,
-    fontFamily: 'Lora_700Bold',
+    fontFamily: 'Quicksand_700Bold',
   },
   activityDuration: {
     color: '#777',
     fontSize: 14,
-    fontFamily: 'Lora_600SemiBold',
+    fontFamily: 'Quicksand_600SemiBold',
   },
   fabContainer: {
     position: 'absolute',
@@ -667,7 +687,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     color: '#777',
-    fontFamily: 'Lora_700Bold',
+    fontFamily: 'Quicksand_700Bold',
     marginBottom: 12,
   },
   categoryRow: {
@@ -688,7 +708,7 @@ const styles = StyleSheet.create({
   categoryText: {
     color: '#666',
     fontSize: 14,
-    fontFamily: 'Lora_600SemiBold',
+    fontFamily: 'Quicksand_600SemiBold',
   },
   categoryTextActive: {
     color: '#3E2723', // Because pastel backgrounds are light, use dark text when active
@@ -701,7 +721,7 @@ const styles = StyleSheet.create({
     padding: 16,
     color: '#3E2723',
     fontSize: 16,
-    fontFamily: 'Lora_500Medium',
+    fontFamily: 'Quicksand_500Medium',
     marginBottom: 32,
   },
   modalActionRow: {
