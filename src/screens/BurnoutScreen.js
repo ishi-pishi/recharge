@@ -69,7 +69,7 @@ export default function BurnoutScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Ionicons name="sparkles" size={32} color="#4A90E2" />
+        <Ionicons name="sparkles" size={32} color="#7b9ed8" />
         <Text style={styles.title}>AI Recommendations</Text>
         <Text style={styles.subtitle}>Get personalized suggestions based on your recent schedule.</Text>
       </View>
@@ -82,7 +82,7 @@ export default function BurnoutScreen() {
 
       {loading && (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4A90E2" />
+          <ActivityIndicator size="large" color="#8ed89e" />
           <Text style={styles.loadingText}>Gemini is generating your recommendation...</Text>
         </View>
       )}
@@ -94,7 +94,7 @@ export default function BurnoutScreen() {
           <Text style={styles.suggestionText}>{insight.suggestion}</Text>
 
           <TouchableOpacity style={styles.refreshButton} onPress={handleGenerate}>
-            <Ionicons name="refresh" size={20} color="#FFF" />
+            <Ionicons name="refresh" size={20} color="#8ed89e" />
             <Text style={styles.refreshText}>Re-run</Text>
           </TouchableOpacity>
         </View>
@@ -106,7 +106,7 @@ export default function BurnoutScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0A',
+    backgroundColor: '#FDFBF7',
   },
   content: {
     padding: 24,
@@ -117,30 +117,32 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFF',
+    fontFamily: 'Quicksand_700Bold',
+    color: '#2A2724',
     marginTop: 16,
   },
   subtitle: {
     fontSize: 16,
-    color: '#888',
+    color: '#777777',
     marginTop: 8,
     lineHeight: 24,
+    fontFamily: 'Quicksand_500Medium',
   },
   generateButton: {
-    backgroundColor: '#4A90E2',
+    backgroundColor: '#8ed89e',
     padding: 16,
     borderRadius: 16,
     alignItems: 'center',
-    shadowColor: '#4A90E2',
-    shadowOpacity: 0.3,
+    shadowColor: '#8ed89e',
+    shadowOpacity: 0.4,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 10,
+    elevation: 4,
   },
   generateText: {
-    color: '#FFF',
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: 'Quicksand_700Bold',
   },
   loadingContainer: {
     padding: 48,
@@ -148,41 +150,49 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadingText: {
-    color: '#4A90E2',
+    color: '#8ed89e',
     marginTop: 16,
     fontSize: 16,
-    fontWeight: '500',
+    fontFamily: 'Quicksand_600SemiBold',
   },
   insightCard: {
-    backgroundColor: '#141414',
+    backgroundColor: '#FFFFFF',
     padding: 24,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#222',
+    borderColor: '#EAE6DF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.05,
+    shadowRadius: 20,
+    elevation: 4,
   },
   suggestionTitle: {
-    color: '#FFF',
+    color: '#2A2724',
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: 'Quicksand_700Bold',
     marginBottom: 12,
   },
   suggestionText: {
-    color: '#D0D0D0',
+    color: '#555555',
     fontSize: 16,
     lineHeight: 24,
     marginBottom: 24,
+    fontFamily: 'Quicksand_600SemiBold',
   },
   refreshButton: {
     flexDirection: 'row',
-    backgroundColor: '#333',
+    backgroundColor: '#FDFBF7',
+    borderWidth: 1,
+    borderColor: '#EAE6DF',
     padding: 12,
-    borderRadius: 12,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   refreshText: {
-    color: '#FFF',
-    fontWeight: '600',
+    color: '#666666',
+    fontFamily: 'Quicksand_700Bold',
     marginLeft: 8,
     fontSize: 14,
   },

@@ -1,16 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { onAuthStateChanged } from 'firebase/auth';
+import { useState, useEffect } from 'react';
 import { auth } from './src/config/firebase';
+import { useFonts, Quicksand_400Regular, Quicksand_500Medium, Quicksand_600SemiBold, Quicksand_700Bold } from '@expo-google-fonts/quicksand';
+import { DefaultTheme } from '@react-navigation/native';
+import { NavigationContainer } from '@react-navigation/native';
+import { StatusBar } from 'expo-status-bar';
 
 // Import Screens (to be created)
 import LoginScreen from './src/screens/LoginScreen';
 import ScheduleScreen from './src/screens/ScheduleScreen';
+import DailySummaryScreen from './src/screens/DailySummaryScreen';
 import BurnoutScreen from './src/screens/BurnoutScreen';
 import SignOutScreen from './src/screens/SignOutScreen';
 
@@ -27,6 +30,8 @@ function MainTabs() {
 
           if (route.name === 'Schedule') {
             iconName = focused ? 'calendar' : 'calendar-outline';
+          } else if (route.name === 'Summary') {
+            iconName = focused ? 'pie-chart' : 'pie-chart-outline';
           } else if (route.name === 'AI Insights') {
             iconName = focused ? 'bulb' : 'bulb-outline';
           } else if (route.name === 'Account') {
@@ -35,22 +40,33 @@ function MainTabs() {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#FFFFFF',
-        tabBarInactiveTintColor: '#666666',
+        tabBarActiveTintColor: '#7b9ed8', // Toned down blue
+        tabBarInactiveTintColor: '#999999',
+        tabBarLabelStyle: {
+          fontFamily: 'Quicksand_600SemiBold',
+        },
         tabBarStyle: {
-          backgroundColor: '#0A0A0A',
-          borderTopColor: '#222',
+          backgroundColor: '#FDFBF7',
+          borderTopColor: '#EAE6DF',
+          elevation: 0,
+          shadowOpacity: 0.1,
         },
         headerStyle: {
-          backgroundColor: '#0A0A0A',
+          backgroundColor: '#FDFBF7',
+          elevation: 0,
+          shadowOpacity: 0,
+          borderBottomWidth: 1,
+          borderBottomColor: '#EAE6DF'
         },
-        headerTintColor: '#fff',
+        headerTintColor: '#2A2724', // Warm dark black
         headerTitleStyle: {
-          fontWeight: 'bold',
+          fontFamily: 'Quicksand_700Bold',
+          color: '#2A2724'
         },
       })}
     >
       <Tab.Screen name="Schedule" component={ScheduleScreen} />
+      <Tab.Screen name="Summary" component={DailySummaryScreen} />
       <Tab.Screen name="AI Insights" component={BurnoutScreen} />
       <Tab.Screen name="Account" component={SignOutScreen} />
     </Tab.Navigator>
@@ -61,6 +77,13 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  let [fontsLoaded] = useFonts({
+    Quicksand_400Regular,
+    Quicksand_500Medium,
+    Quicksand_600SemiBold,
+    Quicksand_700Bold,
+  });
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -70,18 +93,30 @@ export default function App() {
     return unsubscribe;
   }, []);
 
-  if (loading) {
+  if (loading || !fontsLoaded) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0A0A0A' }}>
-        <ActivityIndicator size="large" color="#FFF" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FDFBF7' }}>
+        <ActivityIndicator size="large" color="#7b9ed8" />
       </View>
     );
   }
 
+  // Create a custom light theme extending DefaultTheme
+  const AppTheme = {
+    ...DefaultTheme,
+    colors: {
+      ...DefaultTheme.colors,
+      background: '#FDFBF7',
+      card: '#FDFBF7',
+      text: '#2A2724',
+      primary: '#7b9ed8'
+    },
+  };
+
   return (
-    <NavigationContainer theme={DarkTheme}>
-      <StatusBar style="light" />
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <NavigationContainer theme={AppTheme}>
+      <StatusBar style="dark" />
+      <Stack.Navigator screenOptions={{ headerShown: false, backgroundColor: '#FDFBF7' }}>
         {user ? (
           <Stack.Screen name="Main" component={MainTabs} />
         ) : (

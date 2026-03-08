@@ -1,342 +1,281 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView, DeviceEventEmitter, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator, FlatList, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useIsFocused } from '@react-navigation/native';
-import { fetchActivitiesByDate, fetchLast7DaysActivities } from '../config/api';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { format, subDays, isSameDay } from 'date-fns';
+import { fetchActivitiesByDate } from '../config/api';
 
-const CATEGORIES = [
-  { key: 'Work', label: 'Work' },
-  { key: 'Sleep', label: 'Sleep' },
-  { key: 'Exercise', label: 'Exercise' },
-  { key: 'Socializing', label: 'Socializing' },
-  { key: 'Leisure/Self-Care', label: 'Leisure' },
-];
-
-const INITIAL_TOTALS = CATEGORIES.reduce((acc, cat) => {
-  acc[cat.key] = 0;
-  return acc;
-}, {});
+const CATEGORY_COLORS = {
+  'Work': '#7b9ed8', // muted light blue
+  'Sleep': '#8ed89e', // muted light green
+  'Exercise': '#eda09a', // muted coral/peach
+  'Socializing': '#FFD24D',
+  'Leisure/Self-Care': '#4DDFD2'
+};
 
 export default function DailySummaryScreen() {
-  const [loading, setLoading] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [totals, setTotals] = useState(INITIAL_TOTALS);
-  const [insight, setInsight] = useState(null);
-  const isFocused = useIsFocused();
-  const hasLoadedOnce = React.useRef(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [activities, setActivities] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadTotals = async () => {
-      // Only show the loader the very first time this screen loads.
-      if (!hasLoadedOnce.current) setLoading(true);
+    let active = true;
+    const loadData = async () => {
+      setLoading(true);
       try {
-        const activities = await fetchActivitiesByDate(new Date());
-        const summary = activities.reduce((acc, act) => {
-          const key = act.category || 'Other';
-          acc[key] = (acc[key] || 0) + (act.durationHours || 0);
-          return acc;
-        }, {});
-        setTotals({ ...INITIAL_TOTALS, ...summary });
+        const data = await fetchActivitiesByDate(selectedDate);
+        if (active) setActivities(data);
       } catch (err) {
-        console.error(err);
-        setTotals(INITIAL_TOTALS);
+        console.error("Failed to load summary stats: ", err);
       } finally {
-        hasLoadedOnce.current = true;
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
+    loadData();
+    return () => { active = false; };
+  }, [selectedDate]);
 
-    const subscription = DeviceEventEmitter.addListener('activitySaved', loadTotals);
+  const renderDateSelector = () => {
+    const dates = Array.from({ length: 7 }, (_, i) => subDays(new Date(), 3 - i));
 
-    if (isFocused) {
-      loadTotals();
-    }
-
-    return () => subscription.remove();
-  }, [isFocused]);
-
-  const getScoreColor = (score) => {
-    if (score === "?") return "#666";
-    if (score < 30) return "#34C759";
-    if (score < 70) return "#FF9500";
-    return "#FF3B30";
-  };
-
-  const handleGenerate = async () => {
-    setAiLoading(true);
-    setInsight(null);
-
-    try {
-      const activities = await fetchLast7DaysActivities();
-      const summary = activities.reduce((acc, act) => {
-        if (!acc[act.category]) acc[act.category] = 0;
-        acc[act.category] += act.durationHours;
-        return acc;
-      }, {});
-
-      let scheduleText = "Over the past 7 days, my schedule was roughly:\n";
-      for (const [cat, hours] of Object.entries(summary)) {
-        scheduleText += `- ${cat}: ${hours.toFixed(1)} hours\n`;
-      }
-      if (activities.length === 0) {
-        scheduleText = "I have not logged any activities in the past 7 days.";
-      }
-
-      const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error("Missing Gemini API Key in .env");
-      }
-
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-
-      const prompt = `
-        You are a health span and burnout prediction assistant. 
-        Read the user's activity log for the last 7 days and predict their burnout level.
-        Activities:
-        ${scheduleText}
-        
-        A high burnout score (close to 100) means they are extremely likely to burn out (e.g. low sleep, high work, low leisure). A low score (close to 0) means they are well rested.
-        
-        Respond EXACTLY in this JSON format, and nothing else (do not include markdown ticks \`\`\`json):
-        {
-          "score": 85,
-          "suggestion": "You have been overworking with very little sleep. Please take a break."
-        }
-      `;
-
-      const result = await model.generateContent(prompt);
-      const text = result.response.text().trim();
-      const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-
-      const parsed = JSON.parse(cleanedText);
-      setInsight(parsed);
-    } catch (err) {
-      console.error("Gemini AI Error:", err);
-      setInsight({ score: "?", suggestion: "Error fetching analysis. Please check your network or API limits." });
-    } finally {
-      setAiLoading(false);
-    }
-  };
-
-  const renderRow = ({ key, label }) => {
-    const value = totals[key] ?? 0;
     return (
-      <View key={key} style={styles.box}>
-        <Text style={styles.boxLabel}>{label}</Text>
-        <Text style={styles.boxValue}>{value.toFixed(2)}</Text>
-        <Text style={styles.boxUnits}>hrs</Text>
+      <View style={styles.dateSelector}>
+        {dates.map((date, idx) => {
+          const isSelected = isSameDay(date, selectedDate);
+          return (
+            <TouchableOpacity
+              key={idx}
+              style={[styles.dateItem, isSelected && styles.dateItemSelected]}
+              onPress={() => setSelectedDate(date)}
+            >
+              <Text style={[styles.dateDay, isSelected && styles.dateTextSelected]}>
+                {format(date, 'EEE')}
+              </Text>
+              <Text style={[styles.dateNumber, isSelected && styles.dateTextSelected]}>
+                {format(date, 'd')}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
     );
   };
 
+  const calculateStats = () => {
+    const totalHours = activities.reduce((sum, act) => sum + (act.durationHours || 0), 0);
+
+    // Group by category
+    const grouped = activities.reduce((acc, act) => {
+      acc[act.category] = (acc[act.category] || 0) + (act.durationHours || 0);
+      return acc;
+    }, {});
+
+    // Sort by duration descending
+    const breakdown = Object.entries(grouped)
+      .map(([category, durationHours]) => ({ category, durationHours }))
+      .sort((a, b) => b.durationHours - a.durationHours);
+
+    return { totalHours, breakdown };
+  };
+
+  const { totalHours, breakdown } = calculateStats();
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Daily Summary</Text>
-      <Text style={styles.subtitle}>Today&apos;s totals for tracked activities.</Text>
+    <SafeAreaView style={styles.container}>
+      <Text style={styles.headerTitle}>Daily Summary</Text>
+
+      {renderDateSelector()}
 
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4A90E2" />
-          <Text style={styles.loadingText}>Loading your day...</Text>
+        <View style={styles.emptyContainer}>
+          <ActivityIndicator size="large" color="#FFF" />
+        </View>
+      ) : activities.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="pie-chart-outline" size={80} color="#8ed89e" />
+          <Text style={styles.emptyTitle}>No Data for {format(selectedDate, 'MMM do')}</Text>
+          <Text style={styles.emptySubtitle}>Track activities on the schedule screen to see your summary!</Text>
         </View>
       ) : (
-        <>
-          <View style={styles.summaryCard}>
-            <View style={styles.grid}>
-              {CATEGORIES.map(renderRow)}
-            </View>
-
-            {Object.values(totals).every((v) => v === 0) && (
-              <Text style={styles.emptyText}>No activities logged for today. Add some in the Schedule tab.</Text>
-            )}
+        <View style={styles.content}>
+          {/* Top Stats Overview */}
+          <View style={styles.statsCard}>
+            <Ionicons name="time" size={32} color="#7b9ed8" />
+            <Text style={styles.totalHoursText}>{totalHours.toFixed(1)} <Text style={{ fontSize: 20 }}>hrs</Text></Text>
+            <Text style={styles.statsSubtitle}>Total Logged Time</Text>
           </View>
 
-          {!insight && !aiLoading && (
-            <TouchableOpacity style={styles.generateButton} onPress={handleGenerate}>
-              <Text style={styles.generateText}>Generate Burnout Score</Text>
-            </TouchableOpacity>
-          )}
+          {/* Breakdown List */}
+          <Text style={styles.sectionTitle}>Breakdown</Text>
+          <FlatList
+            data={breakdown}
+            keyExtractor={(item) => item.category}
+            contentContainerStyle={{ paddingBottom: 24 }}
+            renderItem={({ item }) => {
+              const percentage = totalHours > 0 ? (item.durationHours / totalHours) * 100 : 0;
+              const color = CATEGORY_COLORS[item.category] || '#FFF';
 
-          {aiLoading && (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#4A90E2" />
-              <Text style={styles.loadingText}>Gemini is analyzing your schedule...</Text>
-            </View>
-          )}
+              return (
+                <View style={styles.breakdownItem}>
+                  <View style={styles.breakdownHeader}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <View style={[styles.colorDot, { backgroundColor: color }]} />
+                      <Text style={styles.breakdownCategory}>{item.category}</Text>
+                    </View>
+                    <Text style={styles.breakdownDuration}>{item.durationHours.toFixed(1)} hrs</Text>
+                  </View>
 
-          {insight && !aiLoading && (
-            <View style={styles.insightCard}>
-              <Text style={styles.scoreLabel}>Burnout Rating</Text>
-              <View style={[styles.scoreBubble, { backgroundColor: getScoreColor(insight.score) + '20', borderColor: getScoreColor(insight.score) }]}> 
-                <Text style={[styles.scoreValue, { color: getScoreColor(insight.score) }]}>
-                  {insight.score}
-                </Text>
-                {insight.score !== "?" && <Text style={[styles.scoreScale, { color: getScoreColor(insight.score) }]}>/100</Text>}
-              </View>
-
-              <Text style={styles.suggestionTitle}>Insights</Text>
-              <Text style={styles.suggestionText}>{insight.suggestion}</Text>
-
-              <TouchableOpacity style={styles.refreshButton} onPress={handleGenerate}>
-                <Ionicons name="refresh" size={20} color="#FFF" />
-                <Text style={styles.refreshText}>Recalculate</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </>
+                  {/* Mini Progress Bar */}
+                  <View style={styles.progressBarContainer}>
+                    <View style={[styles.progressBarFill, { width: `${percentage}%`, backgroundColor: color }]} />
+                  </View>
+                </View>
+              );
+            }}
+          />
+        </View>
       )}
-    </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0A',
+    backgroundColor: '#FDFBF7',
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontFamily: 'Quicksand_700Bold',
+    color: '#2A2724',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  dateSelector: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EAE6DF',
+  },
+  dateItem: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 16,
+  },
+  dateItemSelected: {
+    backgroundColor: '#8ed89e',
+  },
+  dateDay: {
+    fontSize: 12,
+    color: '#888',
+    marginBottom: 4,
+    fontFamily: 'Quicksand_600SemiBold',
+  },
+  dateNumber: {
+    fontSize: 18,
+    color: '#555',
+    fontFamily: 'Quicksand_700Bold',
+  },
+  dateTextSelected: {
+    color: '#2A2724',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontFamily: 'Quicksand_700Bold',
+    color: '#2A2724',
+    marginTop: 16,
+  },
+  emptySubtitle: {
+    fontSize: 15,
+    color: '#777',
+    marginTop: 8,
+    width: '70%',
+    textAlign: 'center',
+    lineHeight: 20,
+    fontFamily: 'Quicksand_500Medium',
   },
   content: {
-    padding: 24,
+    flex: 1,
+    padding: 16,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFF',
-    marginBottom: 8,
-  },
-  subtitle: {
-    color: '#888',
-    fontSize: 16,
+  statsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 32,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#EAE6DF',
     marginBottom: 24,
-  },
-  summaryCard: {
-    backgroundColor: '#141414',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#222',
-    padding: 20,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  box: {
-    width: '48%',
-    backgroundColor: '#1E1E1E',
-    borderWidth: 1,
-    borderColor: '#222',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-  },
-  boxLabel: {
-    color: '#DDD',
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  boxValue: {
-    color: '#FFF',
-    fontSize: 28,
-    fontWeight: 'bold',
-  },
-  boxUnits: {
-    color: '#888',
-    fontSize: 14,
-    marginTop: 4,
-  },
-  emptyText: {
-    color: '#666',
-    fontSize: 14,
-    marginTop: 16,
-    textAlign: 'center',
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    marginTop: 36,
-  },
-  loadingText: {
-    color: '#4A90E2',
-    marginTop: 12,
-    fontSize: 16,
-  },
-  generateButton: {
-    backgroundColor: '#4A90E2',
-    padding: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    shadowColor: '#4A90E2',
-    shadowOpacity: 0.3,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 10,
-    marginTop: 20,
+    elevation: 2,
   },
-  generateText: {
-    color: '#FFF',
+  totalHoursText: {
+    fontSize: 56,
+    fontFamily: 'Quicksand_700Bold',
+    color: '#2A2724',
+    marginTop: 8,
+  },
+  statsSubtitle: {
     fontSize: 16,
-    fontWeight: 'bold',
+    color: '#777',
+    fontFamily: 'Quicksand_600SemiBold',
+    marginTop: 4,
   },
-  insightCard: {
-    backgroundColor: '#141414',
-    padding: 24,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: '#222',
-    marginTop: 20,
-  },
-  scoreLabel: {
-    color: '#888',
-    fontSize: 14,
-    fontWeight: '600',
+  sectionTitle: {
+    fontSize: 20,
+    fontFamily: 'Quicksand_700Bold',
+    color: '#2A2724',
     marginBottom: 16,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
   },
-  scoreBubble: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 30,
+  breakdownItem: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 20,
+    marginBottom: 12,
     borderWidth: 1,
-    marginBottom: 32,
+    borderColor: '#EAE6DF',
   },
-  scoreValue: {
-    fontSize: 48,
-    fontWeight: 'bold',
-  },
-  scoreScale: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
-  suggestionTitle: {
-    color: '#FFF',
-    fontSize: 18,
-    fontWeight: 'bold',
+  breakdownHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 12,
   },
-  suggestionText: {
-    color: '#D0D0D0',
+  breakdownCategory: {
     fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 24,
+    color: '#2A2724',
+    fontFamily: 'Quicksand_700Bold',
   },
-  refreshButton: {
-    flexDirection: 'row',
-    backgroundColor: '#333',
-    padding: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+  breakdownDuration: {
+    fontSize: 16,
+    color: '#666',
+    fontFamily: 'Quicksand_600SemiBold',
   },
-  refreshText: {
-    color: '#FFF',
-    fontWeight: '600',
-    marginLeft: 8,
-    fontSize: 14,
+  colorDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 10,
   },
+  progressBarContainer: {
+    height: 10,
+    backgroundColor: '#EAE6DF',
+    borderRadius: 5,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 5,
+  }
 });

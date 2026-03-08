@@ -235,11 +235,11 @@ export default function ScheduleScreen() {
 
       {loadingTasks ? (
         <View style={styles.emptyContainer}>
-          <ActivityIndicator size="large" color="#FFF" />
+          <ActivityIndicator size="large" color="#7b9ed8" />
         </View>
       ) : activities.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="happy-outline" size={64} color="#555" />
+          <Ionicons name="sunny-outline" size={80} color="#8ed89e" style={{ marginBottom: 12 }} />
           <Text style={styles.emptyTitle}>Nothing here yet!</Text>
           <Text style={styles.emptySubtitle}>You haven't added any activities for this day.</Text>
         </View>
@@ -247,12 +247,12 @@ export default function ScheduleScreen() {
         <FlatList
           data={activities}
           renderItem={({ item }) => (
-            <View style={styles.activityItem}>
+            <View style={[styles.activityItem, { borderLeftColor: item.category.includes('Work') || item.category.includes('Socializing') ? '#7b9ed8' : '#8ed89e' }]}>
               <View style={styles.activityHeader}>
                 <Ionicons
                   name={item.category?.includes('Work') ? 'briefcase' : item.category?.includes('Sleep') ? 'moon' : 'fitness'}
                   size={20}
-                  color="#FFF"
+                  color="#555"
                 />
                 <Text style={styles.activityTitle}>{item.category}</Text>
               </View>
@@ -307,25 +307,25 @@ export default function ScheduleScreen() {
                 }
                 setTimePickerVisible(true);
               }}>
-              <Text style={{ color: startTime ? '#FFF' : '#666', fontSize: 16 }}>
+              <Text style={{ color: startTime ? '#333' : '#999', fontSize: 16, fontWeight: '500' }}>
                 {startTime || "Select Start Time"}
               </Text>
             </TouchableOpacity>
 
             <Text style={styles.label}>End Time</Text>
-            <TouchableOpacity
+            <TouchableOpacity 
               style={styles.input}
               onPress={() => {
                 setTimePickerMode('end');
                 if (endTime) {
-                  const [h, m] = endTime.split(':');
-                  setTempHour(h); setTempMinute(m);
+                   const [h, m] = endTime.split(':');
+                   setTempHour(h); setTempMinute(m);
                 } else {
-                  setTempHour('10'); setTempMinute('00');
+                   setTempHour('10'); setTempMinute('00');
                 }
                 setTimePickerVisible(true);
               }}>
-              <Text style={{ color: endTime ? '#FFF' : '#666', fontSize: 16 }}>
+              <Text style={{ color: endTime ? '#333' : '#999', fontSize: 16, fontWeight: '500' }}>
                 {endTime || "Select End Time"}
               </Text>
             </TouchableOpacity>
@@ -367,15 +367,15 @@ export default function ScheduleScreen() {
 
             <View style={styles.modalActionRow}>
               <TouchableOpacity
-                style={[styles.modalButtonPrimary, { backgroundColor: timerRunning ? '#FF3B30' : '#34C759', flex: 1, marginRight: 8 }]}
+                style={[styles.modalButtonPrimary, { backgroundColor: timerRunning ? '#eda09a' : '#8ed89e', flex: 1, marginRight: 8 }]}
                 onPress={() => setTimerRunning(!timerRunning)}
               >
                 <Text style={styles.modalButtonTextPrimary}>{timerRunning ? 'Stop' : 'Start'}</Text>
               </TouchableOpacity>
 
               {(!timerRunning && timerSeconds > 0) && (
-                <TouchableOpacity style={[styles.modalButtonPrimary, { flex: 1, marginLeft: 8 }]} onPress={saveTimerActivity} disabled={isSaving}>
-                  {isSaving ? <ActivityIndicator color="#000" /> : <Text style={styles.modalButtonTextPrimary}>Log Activity</Text>}
+                <TouchableOpacity style={[styles.modalButtonPrimary, { flex: 1, marginLeft: 8, backgroundColor: '#7b9ed8' }]} onPress={saveTimerActivity} disabled={isSaving}>
+                  {isSaving ? <ActivityIndicator color="#FFF" /> : <Text style={[styles.modalButtonTextPrimary, { color: '#FFF' }]}>Log Activity</Text>}
                 </TouchableOpacity>
               )}
             </View>
@@ -445,7 +445,7 @@ export default function ScheduleScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0A',
+    backgroundColor: '#FDFBF7',
   },
   dateSelector: {
     flexDirection: 'row',
@@ -453,30 +453,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#222',
+    borderBottomColor: '#EAE6DF',
   },
   dateItem: {
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 8,
-    borderRadius: 12,
+    borderRadius: 16,
   },
   dateItemSelected: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#7b9ed8',
   },
   dateDay: {
     fontSize: 12,
     color: '#888',
     marginBottom: 4,
-    fontWeight: '500',
+    fontFamily: 'Quicksand_600SemiBold',
   },
   dateNumber: {
     fontSize: 18,
-    color: '#FFF',
-    fontWeight: 'bold',
+    color: '#555',
+    fontFamily: 'Quicksand_700Bold',
   },
   dateTextSelected: {
-    color: '#000',
+    color: '#FFF',
   },
   emptyContainer: {
     flex: 1,
@@ -485,25 +485,30 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFF',
+    fontFamily: 'Quicksand_700Bold',
+    color: '#2A2724',
     marginTop: 16,
   },
   emptySubtitle: {
-    fontSize: 14,
-    color: '#888',
+    fontSize: 15,
+    color: '#777',
     marginTop: 8,
+    fontFamily: 'Quicksand_500Medium',
   },
   listContainer: {
     padding: 16,
   },
   activityItem: {
-    backgroundColor: '#1E1E1E',
+    backgroundColor: '#FFFFFF',
     padding: 20,
-    borderRadius: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#333',
+    borderRadius: 20,
+    marginBottom: 16,
+    borderLeftWidth: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 10,
+    elevation: 2,
   },
   activityHeader: {
     flexDirection: 'row',
@@ -511,14 +516,15 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   activityTitle: {
-    color: '#FFF',
+    color: '#2A2724',
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: 'Quicksand_700Bold',
     marginLeft: 12,
   },
   activityDuration: {
-    color: '#888',
+    color: '#777',
     fontSize: 14,
+    fontFamily: 'Quicksand_600SemiBold',
   },
   fabContainer: {
     position: 'absolute',
@@ -531,85 +537,90 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#333',
+    backgroundColor: '#7b9ed8',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
+    shadowColor: '#7b9ed8',
+    shadowOpacity: 0.4,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 8,
+    elevation: 4,
   },
   fabPrimary: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#FFF',
+    backgroundColor: '#8ed89e',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
+    shadowColor: '#8ed89e',
+    shadowOpacity: 0.4,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 12,
+    elevation: 4,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#1A1A1A',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: '#FDFBF7',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     padding: 24,
     paddingBottom: 48,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: -4 },
+    shadowRadius: 16,
+    elevation: 10,
   },
   modalTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFF',
+    fontSize: 26,
+    fontFamily: 'Quicksand_700Bold',
+    color: '#2A2724',
     marginBottom: 24,
   },
   label: {
     fontSize: 14,
-    color: '#D0D0D0',
-    fontWeight: '600',
+    color: '#777',
+    fontFamily: 'Quicksand_700Bold',
     marginBottom: 12,
   },
   categoryRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginBottom: 24,
-    gap: 8,
+    gap: 10,
   },
   categoryPill: {
-    backgroundColor: '#333',
-    paddingVertical: 8,
+    backgroundColor: '#EAE6DF',
+    paddingVertical: 10,
     paddingHorizontal: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#444',
+    borderRadius: 24,
   },
   categoryPillActive: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#FFFFFF',
+    backgroundColor: '#7b9ed8',
   },
   categoryText: {
-    color: '#FFF',
+    color: '#666',
     fontSize: 14,
-    fontWeight: '500',
+    fontFamily: 'Quicksand_600SemiBold',
   },
   categoryTextActive: {
-    color: '#000',
+    color: '#FFF',
   },
   input: {
-    backgroundColor: '#1E1E1E',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#333',
-    borderRadius: 12,
+    borderColor: '#EAE6DF',
+    borderRadius: 16,
     padding: 16,
-    color: '#FFF',
+    color: '#2A2724',
     fontSize: 16,
+    fontFamily: 'Quicksand_500Medium',
     marginBottom: 32,
   },
   modalActionRow: {
@@ -621,52 +632,55 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
     marginRight: 8,
-    borderRadius: 12,
-    backgroundColor: '#333',
+    borderRadius: 16,
+    backgroundColor: '#EAE6DF',
   },
   modalButtonPrimary: {
     flex: 1,
     padding: 16,
     alignItems: 'center',
     marginLeft: 8,
-    borderRadius: 12,
-    backgroundColor: '#FFF',
+    borderRadius: 16,
+    backgroundColor: '#8ed89e',
   },
   modalButtonTextSecondary: {
-    color: '#FFF',
-    fontWeight: 'bold',
+    color: '#555',
+    fontFamily: 'Quicksand_700Bold',
     fontSize: 16,
   },
   modalButtonTextPrimary: {
-    color: '#000',
-    fontWeight: 'bold',
+    color: '#FFF',
+    fontFamily: 'Quicksand_700Bold',
     fontSize: 16,
   },
   timerDisplay: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 32,
+    paddingVertical: 40,
   },
   timerText: {
-    fontSize: 64,
-    fontWeight: '200',
-    color: '#FFF',
+    fontSize: 72,
+    fontFamily: 'Quicksand_400Regular',
+    color: '#2A2724',
     fontVariant: ['tabular-nums'],
   },
   timePickerOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   timePickerContent: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 20,
+    backgroundColor: '#FDFBF7',
+    borderRadius: 24,
     padding: 24,
     width: '85%',
     maxHeight: '60%',
-    borderWidth: 1,
-    borderColor: '#333',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 30,
+    elevation: 10,
   },
   timePickerGrid: {
     flexDirection: 'row',
@@ -690,14 +704,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   timeOptionSelected: {
-    backgroundColor: '#333',
+    backgroundColor: '#EAE6DF',
   },
   timeOptionText: {
-    color: '#FFF',
+    color: '#666',
     fontSize: 18,
+    fontFamily: 'Quicksand_600SemiBold',
   },
   timeOptionTextSelected: {
-    color: '#4DA6FF',
-    fontWeight: 'bold',
+    color: '#7b9ed8',
+    fontFamily: 'Quicksand_700Bold',
   },
 });
