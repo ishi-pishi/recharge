@@ -128,6 +128,9 @@ export default function BurnoutScreen({ navigation }) {
         Analyze the user's 4-day activity log, weighing all categories fairly to determine a balanced 'Burnout Score'. If they have too much work and no sleep/discretionary time, the score is 'Needs Attention'. If perfectly balanced, the score is 'Doing Good!'. 
         The only valid score outputs are: 'Doing Good!', 'Moderate', or 'Needs Attention'.
         The best hours for each activity is: 7-9 hours sleep, 2-3 hours discretionary time, at least 1 hour socializing, and max 8 hours work/obligations. Sometimes too much or little is okay (e.g., lots of exercise, less work).
+        
+        IMPORTANT: If a category has 0 hours or very few hours, assume the user simply forgot to log it rather than didn't do it. Don't penalize missing data - only evaluate based on what IS logged. Focus on the balance of activities they DID track.
+        
         Provide a BRIEF (1-2 sentence) explanation of why they received this score.
 
         Activities:
