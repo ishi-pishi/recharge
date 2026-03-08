@@ -6,4 +6,4 @@ To run the project locally:
 
 -Fill in `.env` with your own API Keys (you may have to start your own firebase project/create your own Gemini)
 
--To run, run `npx expo start --tunnel`
+-To run, run `npx expo start --tunnel` (and scan the QR code to see on your phone!)
