@@ -38,7 +38,7 @@ export default function BurnoutScreen({ navigation }) {
           acc[act.category] += act.durationHours;
           return acc;
         }, {});
-        
+
         let promptText = "Over the past 7 days, my schedule was roughly:\n";
         for (const [cat, hours] of Object.entries(summary)) {
           promptText += `- ${cat}: ${hours.toFixed(1)} hours\n`;
@@ -78,6 +78,7 @@ export default function BurnoutScreen({ navigation }) {
         You are a supportive burnout and self-care AI assistant. 
         Analyze the user's 7-day activity log, weighing all categories fairly to determine a balanced 'Burnout Score'. If they have too much work and no sleep/leisure, the score is 'Needs Attention'. If perfectly balanced, the score is 'Doing Good!'. 
         The only valid score outputs are: 'Doing Good!', 'Moderate', or 'Needs Attention'.
+        The best hours for each activity is: 7-9 hours sleep, 2-3 hours leisure, at least 1 hour socializing, and max 8 hours work/obligations. Sometimes too much or little is okay (e.g., lots of exercise, less work).
         Provide a BRIEF (1-2 sentence) explanation of why they received this score.
 
         Activities:
@@ -127,10 +128,10 @@ export default function BurnoutScreen({ navigation }) {
       {!loading && (
         <View style={styles.insightCard}>
 
-          <Animated.View style={[styles.scoreRingBackground, { 
+          <Animated.View style={[styles.scoreRingBackground, {
             transform: [{ scale: breatheAnim }],
-            backgroundColor: insight?.burnoutRiskScore?.includes('Good') ? '#A8E6CF' : 
-                             insight?.burnoutRiskScore?.includes('Attention') ? '#FFD3B6' : '#EAE6DF'
+            backgroundColor: insight?.burnoutRiskScore?.includes('Good') ? '#A8E6CF' :
+              insight?.burnoutRiskScore?.includes('Attention') ? '#FFD3B6' : '#EAE6DF'
           }]}>
             <TouchableOpacity style={styles.scoreCircle} onPress={handleCirclePress}>
               {insight ? (
@@ -154,14 +155,14 @@ export default function BurnoutScreen({ navigation }) {
               const totalHours = weeklySummary[cat] || 0;
               // Normalize against a roughly 168 hour week, scaled for visual clarity
               // E.g. 40 hours of work is a solid bar
-              const maxExpected = cat === 'Sleep' ? 56 : cat === 'Work' ? 40 : 20; 
+              const maxExpected = cat === 'Sleep' ? 56 : cat === 'Work' ? 40 : 20;
               const fillPercentage = Math.min((totalHours / maxExpected) * 100, 100);
 
               return (
                 <View key={idx} style={styles.barRow}>
                   <Text style={styles.barLabel}>{CATEGORY_INFO[cat]?.emoji} {cat}</Text>
                   <View style={styles.barTrack}>
-                    <View style={[styles.barFill, { 
+                    <View style={[styles.barFill, {
                       backgroundColor: CATEGORY_INFO[cat]?.color || '#CCC',
                       width: `${fillPercentage}%`
                     }]} />
