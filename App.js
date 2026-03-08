@@ -15,7 +15,6 @@ import { StatusBar } from 'expo-status-bar';
 import LoginScreen from './src/screens/LoginScreen';
 import ScheduleScreen from './src/screens/ScheduleScreen';
 import BurnoutScreen from './src/screens/BurnoutScreen';
-import SuggestionsScreen from './src/screens/SuggestionsScreen';
 import SignOutScreen from './src/screens/SignOutScreen';
 
 const Stack = createNativeStackNavigator();
@@ -31,10 +30,8 @@ function MainTabs() {
 
           if (route.name === 'Schedule') {
             iconName = focused ? 'calendar' : 'calendar-outline';
-          } else if (route.name === 'Assessment') {
-            iconName = focused ? 'sparkles' : 'sparkles-outline';
           } else if (route.name === 'Suggestions') {
-            iconName = focused ? 'bulb' : 'bulb-outline';
+            iconName = focused ? 'sparkles' : 'sparkles-outline';
           } else if (route.name === 'Account') {
             iconName = focused ? 'person' : 'person-outline';
           }
@@ -67,8 +64,7 @@ function MainTabs() {
       })}
     >
       <Tab.Screen name="Schedule" component={ScheduleScreen} />
-      <Tab.Screen name="Assessment" component={BurnoutScreen} />
-      <Tab.Screen name="Suggestions" component={SuggestionsScreen} />
+      <Tab.Screen name="Suggestions" component={BurnoutScreen} />
       <Tab.Screen name="Account" component={SignOutScreen} />
     </Tab.Navigator>
   );

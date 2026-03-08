@@ -87,3 +87,16 @@ export const fetchLast7DaysActivities = async () => {
     return [];
   }
 };
+
+export const deleteActivity = async (activityId) => {
+  if (!auth.currentUser) throw new Error('User not authenticated');
+
+  try {
+    const { deleteDoc, doc } = await import('firebase/firestore');
+    await deleteDoc(doc(db, 'activities', activityId));
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting activity:', error);
+    throw error;
+  }
+};

@@ -1,16 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { format, subDays, isSameDay } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { fetchActivitiesByDate } from '../config/api';
-
-const CATEGORY_COLORS = {
-  'Work': '#C9D6ED',        // Soft Blue
-  'Sleep': '#D0E5C9',       // Soft Green
-  'Exercise': '#F2C7AD',    // Soft Coral
-  'Socializing': '#F2E1A8', // Soft Yellow
-  'Leisure/Self-Care': '#D2D6E8' // Soft Purple
-};
 
 export default function DailySummaryScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -34,104 +26,33 @@ export default function DailySummaryScreen() {
     return () => { active = false; };
   }, [selectedDate]);
 
-  const renderDateSelector = () => {
-    const dates = Array.from({ length: 7 }, (_, i) => subDays(new Date(), 3 - i));
+  const isToday = isSameDay(selectedDate, new Date());
 
-    return (
-      <View style={styles.dateSelector}>
-        {dates.map((date, idx) => {
-          const isSelected = isSameDay(date, selectedDate);
-          return (
-            <TouchableOpacity
-              key={idx}
-              style={[styles.dateItem, isSelected && styles.dateItemSelected]}
-              onPress={() => setSelectedDate(date)}
-            >
-              <Text style={[styles.dateDay, isSelected && styles.dateTextSelected]}>
-                {format(date, 'EEE')}
-              </Text>
-              <Text style={[styles.dateNumber, isSelected && styles.dateTextSelected]}>
-                {format(date, 'd')}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    );
-  };
-
-  const calculateStats = () => {
-    const totalHours = activities.reduce((sum, act) => sum + (act.durationHours || 0), 0);
-
-    // Group by category
-    const grouped = activities.reduce((acc, act) => {
-      acc[act.category] = (acc[act.category] || 0) + (act.durationHours || 0);
-      return acc;
-    }, {});
-
-    // Sort by duration descending
-    const breakdown = Object.entries(grouped)
-      .map(([category, durationHours]) => ({ category, durationHours }))
-      .sort((a, b) => b.durationHours - a.durationHours);
-
-    return { totalHours, breakdown };
-  };
-
-  const { totalHours, breakdown } = calculateStats();
+  const totalHours = activities.reduce((sum, act) => sum + (act.durationHours || 0), 0);
 
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.headerTitle}>Daily Summary</Text>
-
-      {renderDateSelector()}
+      <Text style={styles.dateDisplay}>{format(selectedDate, 'EEEE, MMMM do, yyyy')}</Text>
 
       {loading ? (
         <View style={styles.emptyContainer}>
-          <ActivityIndicator size="large" color="#FFF" />
+          <ActivityIndicator size="large" color="#C9D6ED" />
         </View>
       ) : activities.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="pie-chart-outline" size={80} color="#D0E5C9" />
-          <Text style={styles.emptyTitle}>No Data for {format(selectedDate, 'MMM do')}</Text>
+          <Text style={styles.emptyTitle}>No Data for {isToday ? 'Today' : format(selectedDate, 'MMM do')}</Text>
           <Text style={styles.emptySubtitle}>Track activities on the schedule screen to see your summary!</Text>
         </View>
       ) : (
         <View style={styles.content}>
-          {/* Top Stats Overview */}
           <View style={styles.statsCard}>
-            <Ionicons name="time" size={32} color="#C9D6ED" />
-            <Text style={styles.totalHoursText}>{totalHours.toFixed(1)} <Text style={{ fontSize: 20 }}>hrs</Text></Text>
-            <Text style={styles.statsSubtitle}>Total Logged Time</Text>
+            <Ionicons name="time" size={48} color="#C9D6ED" />
+            <Text style={styles.totalHoursText}>{totalHours.toFixed(1)}</Text>
+            <Text style={styles.hoursLabel}>hours studied</Text>
+            <Text style={styles.statsSubtitle}>{isToday ? 'Today' : format(selectedDate, 'MMM do')}</Text>
           </View>
-
-          {/* Breakdown List */}
-          <Text style={styles.sectionTitle}>Breakdown</Text>
-          <FlatList
-            data={breakdown}
-            keyExtractor={(item) => item.category}
-            contentContainerStyle={{ paddingBottom: 24 }}
-            renderItem={({ item }) => {
-              const percentage = totalHours > 0 ? (item.durationHours / totalHours) * 100 : 0;
-              const color = CATEGORY_COLORS[item.category] || '#FFF';
-
-              return (
-                <View style={styles.breakdownItem}>
-                  <View style={styles.breakdownHeader}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <View style={[styles.colorDot, { backgroundColor: color }]} />
-                      <Text style={styles.breakdownCategory}>{item.category}</Text>
-                    </View>
-                    <Text style={styles.breakdownDuration}>{item.durationHours.toFixed(1)} hrs</Text>
-                  </View>
-
-                  {/* Mini Progress Bar */}
-                  <View style={styles.progressBarContainer}>
-                    <View style={[styles.progressBarFill, { width: `${percentage}%`, backgroundColor: color }]} />
-                  </View>
-                </View>
-              );
-            }}
-          />
         </View>
       )}
     </SafeAreaView>
@@ -149,46 +70,20 @@ const styles = StyleSheet.create({
     color: '#2A2724',
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 8,
+    paddingBottom: 4,
   },
-  dateSelector: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EAE6DF',
-  },
-  dateItem: {
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 16,
-  },
-  dateItemSelected: {
-    backgroundColor: '#D0E5C9',
-  },
-  dateItemDay: {
-    fontSize: 14,
-    color: '#777777',
-    marginBottom: 4,
+  dateDisplay: {
+    fontSize: 16,
     fontFamily: 'Lora_600SemiBold',
-  },
-  dateItemDaySelected: {
-    color: '#3E2723',
-  },
-  dateItemDate: {
-    fontSize: 20,
-    fontFamily: 'Lora_700Bold',
-    color: '#3E2723',
-  },
-  dateItemDateSelected: {
-    color: '#3E2723',
+    color: '#777777',
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 32,
   },
   emptyTitle: {
     fontSize: 20,
@@ -207,78 +102,38 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 16,
+    padding: 24,
+    justifyContent: 'center',
   },
   statsCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 32,
+    borderRadius: 32,
+    padding: 48,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#EAE6DF',
-    marginBottom: 24,
     shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 10,
-    elevation: 2,
+    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 16,
+    elevation: 3,
   },
   totalHoursText: {
-    fontSize: 56,
+    fontSize: 72,
     fontFamily: 'Lora_700Bold',
     color: '#3E2723',
+    marginTop: 16,
+  },
+  hoursLabel: {
+    fontSize: 20,
+    fontFamily: 'Lora_600SemiBold',
+    color: '#555',
     marginTop: 8,
   },
   statsSubtitle: {
     fontSize: 16,
-    color: '#777',
-    fontFamily: 'Lora_600SemiBold',
-    marginTop: 4,
+    color: '#999',
+    fontFamily: 'Lora_500Medium',
+    marginTop: 8,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontFamily: 'Lora_700Bold',
-    color: '#3E2723',
-    marginBottom: 16,
-  },
-  breakdownItem: {
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderRadius: 20,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#EAE6DF',
-  },
-  breakdownHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  breakdownCategory: {
-    fontSize: 16,
-    color: '#3E2723',
-    fontFamily: 'Lora_700Bold',
-  },
-  breakdownDuration: {
-    fontSize: 16,
-    color: '#666',
-    fontFamily: 'Lora_600SemiBold',
-  },
-  colorDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 10,
-  },
-  progressBarContainer: {
-    height: 10,
-    backgroundColor: '#EAE6DF',
-    borderRadius: 5,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: 5,
-  }
 });

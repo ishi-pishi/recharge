@@ -79,23 +79,21 @@ export default function LoginScreen() {
 
           <TextInput
             style={styles.input}
-            placeholder="Email (hello@example.com)"
-            placeholderTextColor="#666"
+            placeholder="Email"
+            placeholderTextColor="#999"
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
             keyboardType="email-address"
-            textAlign="center"
           />
 
           <TextInput
             style={styles.input}
-            placeholder="Password (••••••••)"
-            placeholderTextColor="#666"
+            placeholder="Password"
+            placeholderTextColor="#999"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
-            textAlign="center"
           />
 
           {isLogin && (
@@ -110,24 +108,27 @@ export default function LoginScreen() {
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="#000" />
+              <ActivityIndicator color="#FFF" />
             ) : (
               <Text style={styles.primaryButtonText}>
                 {isLogin ? 'Sign In' : 'Create Account'}
               </Text>
             )}
           </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.secondaryButton}
-            onPress={() => setIsLogin(!isLogin)}
-            disabled={loading}
-          >
-            <Text style={styles.secondaryButtonText}>
-              {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
-            </Text>
-          </TouchableOpacity>
         </View>
+
+        <TouchableOpacity 
+          style={styles.secondaryButton}
+          onPress={() => setIsLogin(!isLogin)}
+          disabled={loading}
+        >
+          <Text style={styles.secondaryButtonText}>
+            {isLogin ? "Don't have an account? " : "Already have an account? "}
+            <Text style={styles.secondaryButtonTextHighlight}>
+              {isLogin ? "Sign Up" : "Sign In"}
+            </Text>
+          </Text>
+        </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );
@@ -143,7 +144,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 24,
     alignItems: 'center',
-    paddingBottom: 60, // Push content higher up visually
+    paddingBottom: 60,
   },
   headerContainer: {
     marginBottom: 48,
@@ -175,34 +176,25 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
   },
   formTitle: {
-    fontSize: 24,
-    fontFamily: 'Lora_700Bold',
+    fontSize: 28,
+    fontFamily: 'Quicksand_700Bold',
     color: '#3E2723',
     marginBottom: 24,
     textAlign: 'center',
   },
-  label: {
-    fontSize: 14,
-    fontFamily: 'Lora_700Bold',
-    color: '#666666',
-    marginBottom: 8,
-    marginLeft: 4,
-    textAlign: 'center',
-  },
   input: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FDFBF7',
     borderRadius: 12,
     padding: 16,
     color: '#3E2723',
     fontSize: 16,
     fontFamily: 'Quicksand_600SemiBold',
-    marginBottom: 20,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: '#EAE6DF',
-    textAlign: 'center',
   },
   primaryButton: {
-    backgroundColor: '#8CBDB1', // Darker Teal
+    backgroundColor: '#8CBDB1',
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
@@ -220,8 +212,7 @@ const styles = StyleSheet.create({
   },
   forgotPasswordContainer: {
     alignSelf: 'center',
-    marginBottom: 24,
-    marginTop: -8,
+    marginBottom: 16,
   },
   forgotPasswordText: {
     color: '#C9D6ED',
@@ -229,12 +220,16 @@ const styles = StyleSheet.create({
     fontFamily: 'Quicksand_600SemiBold',
   },
   secondaryButton: {
-    marginTop: 20,
+    marginTop: 24,
     alignItems: 'center',
   },
   secondaryButtonText: {
     color: '#888',
     fontSize: 14,
     fontFamily: 'Quicksand_600SemiBold',
+  },
+  secondaryButtonTextHighlight: {
+    color: '#F2C7AD',
+    fontFamily: 'Quicksand_700Bold',
   },
 });

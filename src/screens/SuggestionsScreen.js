@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { useFocusEffect } from '@react-navigation/native';
 import { fetchLast7DaysActivities } from '../config/api';
+import Markdown from 'react-native-markdown-display';
 
 export default function SuggestionsScreen({ route, navigation }) {
   // If navigated from Assessment, we might have insight already. 
@@ -57,7 +58,9 @@ export default function SuggestionsScreen({ route, navigation }) {
         
         let localScheduleText = "Over the past 7 days, my schedule was roughly:\n";
         for (const [cat, hours] of Object.entries(summary)) {
-          localScheduleText += `- ${cat}: ${hours.toFixed(1)} hours\n`;
+          // Display "Discretionary" instead of "Leisure/Self-Care" in prompts
+          const displayCat = cat === 'Leisure/Self-Care' ? 'Discretionary' : cat;
+          localScheduleText += `- ${displayCat}: ${hours.toFixed(1)} hours\n`;
         }
         if (activities.length === 0) {
           localScheduleText = "I have not logged any activities in the past 7 days.";
@@ -111,7 +114,7 @@ export default function SuggestionsScreen({ route, navigation }) {
             </>
           )}
           
-          <Text style={styles.suggestionText}>{suggestions}</Text>
+          <Markdown style={markdownStyles}>{suggestions}</Markdown>
         </View>
       )}
 
@@ -204,3 +207,102 @@ const styles = StyleSheet.create({
     fontFamily: 'Quicksand_600SemiBold',
   },
 });
+
+const markdownStyles = {
+  body: {
+    fontSize: 16,
+    color: '#555',
+    lineHeight: 28,
+    fontFamily: 'Quicksand_600SemiBold',
+  },
+  heading1: {
+    fontSize: 24,
+    fontFamily: 'Lora_700Bold',
+    color: '#3E2723',
+    marginTop: 16,
+    marginBottom: 12,
+  },
+  heading2: {
+    fontSize: 20,
+    fontFamily: 'Lora_700Bold',
+    color: '#3E2723',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  heading3: {
+    fontSize: 18,
+    fontFamily: 'Lora_700Bold',
+    color: '#3E2723',
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  paragraph: {
+    fontSize: 16,
+    color: '#555',
+    lineHeight: 28,
+    marginBottom: 12,
+  },
+  strong: {
+    fontWeight: '700',
+    color: '#3E2723',
+  },
+  em: {
+    fontStyle: 'italic',
+    fontFamily: 'Lora_500Medium',
+  },
+  bullet_list: {
+    marginBottom: 12,
+  },
+  ordered_list: {
+    marginBottom: 12,
+  },
+  list_item: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  bullet_list_icon: {
+    fontSize: 16,
+    color: '#F2C7AD',
+    marginRight: 8,
+    marginTop: 4,
+  },
+  bullet_list_content: {
+    flex: 1,
+    fontSize: 16,
+    color: '#555',
+    lineHeight: 26,
+  },
+  code_inline: {
+    backgroundColor: '#F5F5F5',
+    color: '#C9D6ED',
+    fontFamily: 'monospace',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  code_block: {
+    backgroundColor: '#F5F5F5',
+    padding: 12,
+    borderRadius: 8,
+    marginVertical: 8,
+  },
+  fence: {
+    backgroundColor: '#F5F5F5',
+    padding: 12,
+    borderRadius: 8,
+    marginVertical: 8,
+  },
+  blockquote: {
+    backgroundColor: '#F9F9F9',
+    borderLeftWidth: 4,
+    borderLeftColor: '#D0E5C9',
+    paddingLeft: 12,
+    paddingVertical: 8,
+    marginVertical: 8,
+  },
+  hr: {
+    backgroundColor: '#EAE6DF',
+    height: 1,
+    marginVertical: 16,
+  },
+};

@@ -1,50 +1,46 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Animated, Modal, Pressable } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { fetchLast7DaysActivities, fetchActivitiesByDate } from '../config/api';
+import { fetchActivitiesByDate } from '../config/api';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { useFocusEffect } from '@react-navigation/native';
-
-const CATEGORY_INFO = {
-  'Work': { emoji: '💼', color: '#C9D6ED' },
-  'Sleep': { emoji: '🌙', color: '#D0E5C9' },
-  'Exercise': { emoji: '💪', color: '#F2C7AD' },
-  'Socializing': { emoji: '🗣️', color: '#F2E1A8' },
-  'Leisure/Self-Care': { emoji: '🧘', color: '#D2D6E8' },
-};
+import Markdown from 'react-native-markdown-display';
 
 export default function BurnoutScreen({ navigation }) {
-  const [loading, setLoading] = useState(true); // Start loading true
+  const [loading, setLoading] = useState(true);
   const [insight, setInsight] = useState(null);
+  const [suggestions, setSuggestions] = useState(null);
   const [weeklySummary, setWeeklySummary] = useState({});
   const [scheduleText, setScheduleText] = useState("");
   const breatheAnim = useRef(new Animated.Value(1)).current;
 
-  // Reset insight state when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       setInsight(null);
+      setSuggestions(null);
     }, [])
   );
 
   useEffect(() => {
     let isActive = true;
-    const fetchWeekly = async () => {
+    const fetchDaily = async () => {
       setLoading(true);
       try {
-        const activities = await fetchLast7DaysActivities();
+        const activities = await fetchActivitiesByDate(new Date());
         const summary = activities.reduce((acc, act) => {
           if (!acc[act.category]) acc[act.category] = 0;
           acc[act.category] += act.durationHours;
           return acc;
         }, {});
 
-        let promptText = "Over the past 7 days, my schedule was roughly:\n";
+        let promptText = "Today, my schedule was roughly:\n";
         for (const [cat, hours] of Object.entries(summary)) {
-          promptText += `- ${cat}: ${hours.toFixed(1)} hours\n`;
+          // Display "Discretionary" instead of "Leisure/Self-Care" in prompts
+          const displayCat = cat === 'Leisure/Self-Care' ? 'Discretionary' : cat;
+          promptText += `- ${displayCat}: ${hours.toFixed(1)} hours\n`;
         }
         if (activities.length === 0) {
-          promptText = "I have not logged any activities in the past 7 days.";
+          promptText = "I have not logged any activities today.";
         }
 
         if (isActive) {
@@ -52,19 +48,19 @@ export default function BurnoutScreen({ navigation }) {
           setScheduleText(promptText);
         }
       } catch (err) {
-        console.error("Error fetching weekly data", err);
+        console.error("Error fetching daily data", err);
       } finally {
         if (isActive) setLoading(false);
       }
     };
 
-    fetchWeekly();
+    fetchDaily();
 
     return () => { isActive = false; }
   }, []);
 
   const handleGenerate = async () => {
-    if (insight) return; // already generated
+    if (insight) return;
     setLoading(true);
 
     try {
@@ -74,11 +70,11 @@ export default function BurnoutScreen({ navigation }) {
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-      const prompt = `
+      const scorePrompt = `
         You are a supportive burnout and self-care AI assistant. 
-        Analyze the user's 7-day activity log, weighing all categories fairly to determine a balanced 'Burnout Score'. If they have too much work and no sleep/leisure, the score is 'Needs Attention'. If perfectly balanced, the score is 'Doing Good!'. 
+        Analyze the user's daily activity log, weighing all categories fairly to determine a balanced 'Burnout Score'. If they have too much work and no sleep/discretionary time, the score is 'Needs Attention'. If perfectly balanced, the score is 'Doing Good!'. 
         The only valid score outputs are: 'Doing Good!', 'Moderate', or 'Needs Attention'.
-        The best hours for each activity is: 7-9 hours sleep, 2-3 hours leisure, at least 1 hour socializing, and max 8 hours work/obligations. Sometimes too much or little is okay (e.g., lots of exercise, less work).
+        The best hours for each activity is: 7-9 hours sleep, 2-3 hours discretionary time, at least 1 hour socializing, and max 8 hours work/obligations. Sometimes too much or little is okay (e.g., lots of exercise, less work).
         Provide a BRIEF (1-2 sentence) explanation of why they received this score.
 
         Activities:
@@ -91,15 +87,26 @@ export default function BurnoutScreen({ navigation }) {
         }
       `;
 
-      const result = await model.generateContent(prompt);
-
-      const text = result.response.text().trim();
-
-      // Remove any json markdown if model ignored the prompt format instruction
-      const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-
-      const parsed = JSON.parse(cleanedText);
+      const scoreResult = await model.generateContent(scorePrompt);
+      const scoreText = scoreResult.response.text().trim();
+      const cleanedScoreText = scoreText.replace(/```json/g, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleanedScoreText);
       setInsight({ ...parsed });
+
+      // Now generate suggestions
+      const suggestionsPrompt = `
+        You are a supportive burnout and self-care AI assistant. 
+        The user just received a Burnout Score of "${parsed.burnoutRiskScore}".
+        Here is their daily schedule:
+        ${scheduleText}
+        
+        Provide a short (2-3 sentences max) comforting observation, followed by exactly 3 bullet points of actionable, gentle advice tailored to their specific schedule to improve their balance.
+      `;
+
+      const suggestionsResult = await model.generateContent(suggestionsPrompt);
+      const suggestionsText = suggestionsResult.response.text().trim();
+      setSuggestions(suggestionsText);
+
     } catch (error) {
       console.error("Gemini AI Error:", error);
       setInsight({ explanation: "Error fetching suggestions. Please check your network or API limits." });
@@ -111,13 +118,17 @@ export default function BurnoutScreen({ navigation }) {
   const handleCirclePress = () => {
     if (!insight) {
       handleGenerate();
-    } else {
-      navigation.navigate('Suggestions', { insight, scheduleText });
     }
   };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.header}>
+        <Ionicons name="sparkles" size={32} color="#F2E1A8" />
+        <Text style={styles.title}>Suggestions</Text>
+        <Text style={styles.subtitle}>AI analysis on how to improve your daily balance.</Text>
+      </View>
+
       {loading && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#D0E5C9" />
@@ -127,7 +138,6 @@ export default function BurnoutScreen({ navigation }) {
 
       {!loading && (
         <View style={styles.insightCard}>
-
           <Animated.View style={[styles.scoreRingBackground, {
             transform: [{ scale: breatheAnim }],
             backgroundColor: insight?.burnoutRiskScore?.includes('Good') ? '#A8E6CF' :
@@ -138,43 +148,23 @@ export default function BurnoutScreen({ navigation }) {
                 <>
                   <Text style={styles.scoreLabel}>Score</Text>
                   <Text style={styles.scoreValue}>{insight.burnoutRiskScore}</Text>
-                  <Text style={styles.scoreTapHint}>Tap for details</Text>
                 </>
               ) : (
                 <>
                   <Text style={[styles.scoreLabel, { fontFamily: 'Quicksand_700Bold', fontSize: 28 }]}>Analyze</Text>
-                  <Text style={[styles.scoreTapHint, { marginTop: 4, fontFamily: 'Lora_600SemiBold' }]}>Tap to generate score</Text>
+                  <Text style={[styles.scoreTapHint, { marginTop: 4, fontFamily: 'Lora_600SemiBold' }]}>Tap to generate</Text>
                 </>
               )}
             </TouchableOpacity>
           </Animated.View>
 
-          <View style={styles.dailyBarsContainer}>
-            <Text style={styles.dailyBarsTitle}>7-Day History</Text>
-            {Object.keys(CATEGORY_INFO).map((cat, idx) => {
-              const totalHours = weeklySummary[cat] || 0;
-              // Normalize against a roughly 168 hour week, scaled for visual clarity
-              // E.g. 40 hours of work is a solid bar
-              const maxExpected = cat === 'Sleep' ? 56 : cat === 'Work' ? 40 : 20;
-              const fillPercentage = Math.min((totalHours / maxExpected) * 100, 100);
-
-              return (
-                <View key={idx} style={styles.barRow}>
-                  <Text style={styles.barLabel}>{CATEGORY_INFO[cat]?.emoji} {cat}</Text>
-                  <View style={styles.barTrack}>
-                    <View style={[styles.barFill, {
-                      backgroundColor: CATEGORY_INFO[cat]?.color || '#CCC',
-                      width: `${fillPercentage}%`
-                    }]} />
-                  </View>
-                  <Text style={styles.barTime}>{totalHours.toFixed(1)}h</Text>
-                </View>
-              );
-            })}
-          </View>
+          {suggestions && (
+            <View style={styles.suggestionsContainer}>
+              <Markdown style={markdownStyles}>{suggestions}</Markdown>
+            </View>
+          )}
         </View>
       )}
-
     </ScrollView>
   );
 }
@@ -189,21 +179,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 24,
   },
-  generateButton: {
-    backgroundColor: '#D0E5C9',
-    padding: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    shadowColor: '#D0E5C9',
-    shadowOpacity: 0.4,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 10,
-    elevation: 4,
+  header: {
+    marginBottom: 32,
   },
-  generateText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+  title: {
+    fontSize: 32,
     fontFamily: 'Lora_700Bold',
+    color: '#3E2723',
+    marginTop: 16,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#777777',
+    marginTop: 8,
+    lineHeight: 24,
+    fontFamily: 'Lora_500Medium',
   },
   loadingContainer: {
     padding: 48,
@@ -274,46 +264,106 @@ const styles = StyleSheet.create({
     fontFamily: 'Lora_500Medium',
     marginTop: 8,
   },
-  dailyBarsContainer: {
-    marginBottom: 32,
-    backgroundColor: '#FDFBF7',
-    padding: 16,
-    borderRadius: 16,
-  },
-  dailyBarsTitle: {
-    fontSize: 16,
-    fontFamily: 'Quicksand_700Bold',
-    color: '#3E2723',
-    marginBottom: 16,
-  },
-  barRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  barLabel: {
-    width: 100,
-    fontSize: 14,
-    fontFamily: 'Quicksand_600SemiBold',
-    color: '#555',
-  },
-  barTrack: {
-    flex: 1,
-    height: 12,
-    backgroundColor: '#EAE6DF',
-    borderRadius: 6,
-    marginHorizontal: 8,
-    overflow: 'hidden',
-  },
-  barFill: {
-    height: '100%',
-    borderRadius: 6,
-  },
-  barTime: {
-    width: 45,
-    fontSize: 14,
-    fontFamily: 'Quicksand_600SemiBold',
-    color: '#777',
-    textAlign: 'right',
+  suggestionsContainer: {
+    marginTop: 8,
   },
 });
+
+const markdownStyles = {
+  body: {
+    fontSize: 16,
+    color: '#555',
+    lineHeight: 28,
+    fontFamily: 'Quicksand_600SemiBold',
+  },
+  heading1: {
+    fontSize: 24,
+    fontFamily: 'Lora_700Bold',
+    color: '#3E2723',
+    marginTop: 16,
+    marginBottom: 12,
+  },
+  heading2: {
+    fontSize: 20,
+    fontFamily: 'Lora_700Bold',
+    color: '#3E2723',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  heading3: {
+    fontSize: 18,
+    fontFamily: 'Lora_700Bold',
+    color: '#3E2723',
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  paragraph: {
+    fontSize: 16,
+    color: '#555',
+    lineHeight: 28,
+    marginBottom: 12,
+  },
+  strong: {
+    fontWeight: '700',
+    color: '#3E2723',
+  },
+  em: {
+    fontStyle: 'italic',
+    fontFamily: 'Lora_500Medium',
+  },
+  bullet_list: {
+    marginBottom: 12,
+  },
+  ordered_list: {
+    marginBottom: 12,
+  },
+  list_item: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  bullet_list_icon: {
+    fontSize: 16,
+    color: '#F2C7AD',
+    marginRight: 8,
+    marginTop: 4,
+  },
+  bullet_list_content: {
+    flex: 1,
+    fontSize: 16,
+    color: '#555',
+    lineHeight: 26,
+  },
+  code_inline: {
+    backgroundColor: '#F5F5F5',
+    color: '#C9D6ED',
+    fontFamily: 'monospace',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  code_block: {
+    backgroundColor: '#F5F5F5',
+    padding: 12,
+    borderRadius: 8,
+    marginVertical: 8,
+  },
+  fence: {
+    backgroundColor: '#F5F5F5',
+    padding: 12,
+    borderRadius: 8,
+    marginVertical: 8,
+  },
+  blockquote: {
+    backgroundColor: '#F9F9F9',
+    borderLeftWidth: 4,
+    borderLeftColor: '#D0E5C9',
+    paddingLeft: 12,
+    paddingVertical: 8,
+    marginVertical: 8,
+  },
+  hr: {
+    backgroundColor: '#EAE6DF',
+    height: 1,
+    marginVertical: 16,
+  },
+};

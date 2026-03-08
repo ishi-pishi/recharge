@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { format, subDays, isSameDay } from 'date-fns';
-import { saveActivity, fetchActivitiesByDate } from '../config/api';
+import { saveActivity, fetchActivitiesByDate, deleteActivity } from '../config/api';
 import { auth } from '../config/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 export const CATEGORY_INFO = {
@@ -21,7 +21,7 @@ export const CATEGORY_INFO = {
   'Sleep': { emoji: '🌙', color: '#D0E5C9' },
   'Exercise': { emoji: '💪', color: '#F2C7AD' },
   'Socializing': { emoji: '🗣️', color: '#F2E1A8' },
-  'Leisure/Self-Care': { emoji: '🧘', color: '#D2D6E8' },
+  'Discretionary': { emoji: '🧘', color: '#D2D6E8' },
 };
 const CATEGORIES = Object.keys(CATEGORY_INFO);
 const HOURS = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
@@ -187,7 +187,7 @@ export default function ScheduleScreen() {
     }
   };
 
-  // save timer activity with optimistic update
+  // save timer activity with optimistic update and record start/end times
   const saveTimerActivity = async () => {
     if (!user) {
       alert('You must be signed in to save activities.');
@@ -197,12 +197,20 @@ export default function ScheduleScreen() {
     if (!timerStartTime) return;
 
     setIsSaving(true);
-    const durationMs = Date.now() - timerStartTime;
+    const endTime = Date.now();
+    const durationMs = endTime - timerStartTime;
     const hours = durationMs / (1000 * 60 * 60);
     
-    // Safety check: if less than 1 minute, don't log or round it, but we'll log exact for now
+    // Calculate start and end time strings
+    const startDate = new Date(timerStartTime);
+    const endDate = new Date(endTime);
+    const startTimeStr = `${startDate.getHours().toString().padStart(2, '0')}:${startDate.getMinutes().toString().padStart(2, '0')}`;
+    const endTimeStr = `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`;
+    
     const payload = {
       category: selectedCategory,
+      startTime: startTimeStr,
+      endTime: endTimeStr,
       durationHours: hours,
       date: new Date().toISOString(),
       timestamp: Date.now()
@@ -227,27 +235,72 @@ export default function ScheduleScreen() {
     }
   };
 
+  const handleDeleteActivity = async (activityId) => {
+    try {
+      await deleteActivity(activityId);
+      setActivities(prev => prev.filter(act => act.id !== activityId));
+    } catch (err) {
+      console.error('Failed to delete activity:', err);
+      alert('Failed to delete activity.');
+    }
+  };
+
+  const calculateDailySummary = () => {
+    const summary = {};
+    CATEGORIES.forEach(cat => {
+      const dataKey = cat === 'Discretionary' ? 'Leisure/Self-Care' : cat;
+      summary[cat] = activities
+        .filter(act => act.category === cat || act.category === dataKey)
+        .reduce((sum, act) => sum + (act.durationHours || 0), 0);
+    });
+    return summary;
+  };
+
+  const dailySummary = calculateDailySummary();
+
+  const [dateOffset, setDateOffset] = useState(0);
+
   const renderDateSelector = () => {
-    const dates = Array.from({ length: 7 }, (_, i) => subDays(new Date(), 3 - i));
+    const dates = Array.from({ length: 7 }, (_, i) => subDays(new Date(), 3 - i - dateOffset));
     return (
-      <View style={styles.dateSelector}>
-        {dates.map((date, idx) => {
-          const isSelected = isSameDay(date, selectedDate);
-          return (
-            <TouchableOpacity
-              key={idx}
-              style={[styles.dateItem, isSelected && styles.dateItemSelected]}
-              onPress={() => setSelectedDate(date)}
-            >
-              <Text style={[styles.dateDay, isSelected && styles.dateTextSelected]}>
-                {format(date, 'EEE')}
-              </Text>
-              <Text style={[styles.dateNumber, isSelected && styles.dateTextSelected]}>
-                {format(date, 'd')}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+      <View style={styles.dateSelectorContainer}>
+        <TouchableOpacity 
+          style={styles.arrowButton}
+          onPress={() => setDateOffset(dateOffset + 7)}
+        >
+          <Ionicons name="chevron-back" size={24} color="#555" />
+        </TouchableOpacity>
+        <View style={styles.dateSelector}>
+          <FlatList
+            horizontal
+            data={dates}
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(item, idx) => idx.toString()}
+            renderItem={({ item: date }) => {
+              const isSelected = isSameDay(date, selectedDate);
+              return (
+                <TouchableOpacity
+                  style={[styles.dateItem, isSelected && styles.dateItemSelected]}
+                  onPress={() => setSelectedDate(date)}
+                >
+                  <Text style={[styles.dateDay, isSelected && styles.dateTextSelected]}>
+                    {format(date, 'EEE')}
+                  </Text>
+                  <Text style={[styles.dateNumber, isSelected && styles.dateTextSelected]}>
+                    {format(date, 'd')}
+                  </Text>
+                </TouchableOpacity>
+              );
+            }}
+          />
+        </View>
+        <TouchableOpacity 
+          style={styles.arrowButton}
+          onPress={() => setDateOffset(Math.max(0, dateOffset - 7))}
+          disabled={dateOffset === 0}
+        >
+          <Ionicons name="chevron-forward" size={24} color={dateOffset === 0 ? '#CCC' : '#555'} />
+        </TouchableOpacity>
       </View>
     );
   };
@@ -260,34 +313,56 @@ export default function ScheduleScreen() {
         <View style={styles.emptyContainer}>
           <ActivityIndicator size="large" color="#C9D6ED" />
         </View>
-      ) : activities.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="sunny-outline" size={80} color="#D0E5C9" style={{ marginBottom: 12 }} />
-          <Text style={styles.emptyTitle}>Nothing here yet!</Text>
-          <Text style={styles.emptySubtitle}>You haven't added any activities for this day.</Text>
-        </View>
       ) : (
         <FlatList
           data={activities}
+          ListHeaderComponent={() => (
+            <View style={styles.summarySection}>
+              <Text style={styles.summaryTitle}>Today's Summary</Text>
+              <View style={styles.summaryList}>
+                {CATEGORIES.map((cat, idx) => (
+                  <View key={idx} style={styles.summaryRow}>
+                    <Text style={styles.summaryRowCategory}>{cat}</Text>
+                    <Text style={styles.summaryRowHours}>{dailySummary[cat].toFixed(1)} hrs</Text>
+                  </View>
+                ))}
+              </View>
+              <Text style={styles.activitiesTitle}>Activities</Text>
+            </View>
+          )}
+          ListEmptyComponent={() => (
+            <View style={styles.emptyActivitiesContainer}>
+              <Ionicons name="sunny-outline" size={60} color="#D0E5C9" style={{ marginBottom: 12 }} />
+              <Text style={styles.emptyActivitiesText}>No activities logged yet</Text>
+            </View>
+          )}
           renderItem={({ item }) => (
             <View style={[styles.activityItem, { borderLeftColor: CATEGORY_INFO[item.category]?.color || '#EAE6DF' }]}>
-              <View style={styles.activityHeader}>
-                <Ionicons
-                  name={
-                    item.category?.includes('Work') ? 'briefcase' :
-                    item.category?.includes('Sleep') ? 'moon' :
-                    item.category?.includes('Exercise') ? 'fitness' :
-                    item.category?.includes('Socializing') ? 'chatbubbles' : 'leaf'
-                  }
-                  size={20}
-                  color="#555"
-                  style={{ marginRight: 8 }}
-                />
-                <Text style={styles.activityTitle}>{item.category}</Text>
+              <View style={styles.activityContent}>
+                <View style={styles.activityHeader}>
+                  <Ionicons
+                    name={
+                      item.category?.includes('Work') ? 'briefcase' :
+                      item.category?.includes('Sleep') ? 'moon' :
+                      item.category?.includes('Exercise') ? 'fitness' :
+                      item.category?.includes('Socializing') ? 'chatbubbles' : 'leaf'
+                    }
+                    size={20}
+                    color="#555"
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text style={styles.activityTitle}>{item.category}</Text>
+                </View>
+                <Text style={styles.activityDuration}>
+                  {item.startTime && item.endTime ? `${item.startTime} - ${item.endTime}` : 'No time recorded'}
+                </Text>
               </View>
-              <Text style={styles.activityDuration}>
-                {item.startTime ? `${item.startTime} - ${item.endTime} ` : ''}({item.durationHours ? item.durationHours.toFixed(2) : 0} hrs log)
-              </Text>
+              <TouchableOpacity 
+                style={styles.deleteButton}
+                onPress={() => handleDeleteActivity(item.id)}
+              >
+                <Ionicons name="trash-outline" size={20} color="#F2C7AD" />
+              </TouchableOpacity>
             </View>
           )}
           keyExtractor={(item) => item.id}
@@ -549,19 +624,25 @@ const styles = StyleSheet.create({
     fontFamily: 'Lora_700Bold',
     color: '#3E2723',
   },
-  dateSelector: {
+  dateSelectorContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    alignItems: 'center',
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#EAE6DF',
   },
+  arrowButton: {
+    paddingHorizontal: 12,
+  },
+  dateSelector: {
+    flex: 1,
+  },
   dateItem: {
     alignItems: 'center',
     paddingVertical: 12,
-    paddingHorizontal: 8,
+    paddingHorizontal: 16,
     borderRadius: 16,
+    marginHorizontal: 4,
   },
   dateItemSelected: {
     backgroundColor: '#C9D6ED',
@@ -598,34 +679,98 @@ const styles = StyleSheet.create({
     fontFamily: 'Lora_500Medium',
   },
   listContainer: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 100,
+  },
+  summarySection: {
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  summaryTitle: {
+    fontSize: 20,
+    fontFamily: 'Lora_700Bold',
+    color: '#3E2723',
+    marginBottom: 16,
+  },
+  summaryList: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#EAE6DF',
+    marginBottom: 24,
+    overflow: 'hidden',
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5',
+  },
+  summaryRowCategory: {
+    fontSize: 15,
+    fontFamily: 'Quicksand_600SemiBold',
+    color: '#3E2723',
+  },
+  summaryRowHours: {
+    fontSize: 16,
+    fontFamily: 'Lora_700Bold',
+    color: '#555',
+  },
+  activitiesTitle: {
+    fontSize: 18,
+    fontFamily: 'Lora_700Bold',
+    color: '#3E2723',
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  emptyActivitiesContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  emptyActivitiesText: {
+    fontSize: 14,
+    color: '#999',
+    fontFamily: 'Lora_500Medium',
   },
   activityItem: {
     backgroundColor: '#FFFFFF',
-    padding: 20,
-    borderRadius: 20,
-    marginBottom: 16,
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 12,
     borderLeftWidth: 6,
     shadowColor: '#000',
     shadowOpacity: 0.04,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 10,
     elevation: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  activityContent: {
+    flex: 1,
   },
   activityHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   activityTitle: {
     color: '#3E2723',
-    fontSize: 18,
+    fontSize: 16,
     fontFamily: 'Quicksand_700Bold',
   },
   activityDuration: {
     color: '#777',
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: 'Quicksand_600SemiBold',
+  },
+  deleteButton: {
+    padding: 8,
+    marginLeft: 8,
   },
   fabContainer: {
     position: 'absolute',
