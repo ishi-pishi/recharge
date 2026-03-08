@@ -125,9 +125,14 @@ export default function BurnoutScreen({ navigation }) {
 
       const scorePrompt = `
         You are a supportive burnout and self-care AI assistant. 
-        Analyze the user's 4-day activity log, weighing all categories fairly to determine a balanced 'Burnout Score'. If they have too much work and no sleep/discretionary time, the score is 'Needs Attention'. If perfectly balanced, the score is 'Doing Good!'. 
-        The only valid score outputs are: 'Doing Good!', 'Moderate', or 'Needs Attention'.
-        The best hours for each activity is: 7-9 hours sleep, 2-3 hours discretionary time, at least 1 hour socializing, and max 8 hours work/obligations. Sometimes too much or little is okay (e.g., lots of exercise, less work).
+        Analyze the user's 4-day activity log, weighing all categories fairly to determine a balanced 'Burnout Score'.
+        
+        The ONLY valid score outputs are (use EXACTLY these phrases):
+        - "Doing Good!" (if well-balanced with good variety)
+        - "Moderate" (if somewhat balanced but could improve)
+        - "Needs Attention" (if too much work, not enough sleep/discretionary time, or very imbalanced)
+        
+        Guidelines: 7-9 hours sleep, 2-3 hours discretionary time, at least 1 hour socializing, max 8 hours work/obligations per day.
         
         IMPORTANT: If a category has 0 hours or very few hours, assume the user simply forgot to log it rather than didn't do it. Don't penalize missing data - only evaluate based on what IS logged. Focus on the balance of activities they DID track.
         
@@ -138,7 +143,7 @@ export default function BurnoutScreen({ navigation }) {
 
         Respond EXACTLY in this JSON format, and nothing else:
         {
-          "burnoutRiskScore": "Doing Good! | Moderate | Needs Attention",
+          "burnoutRiskScore": "Doing Good!" OR "Moderate" OR "Needs Attention",
           "explanation": "..."
         }
       `;
@@ -196,13 +201,14 @@ export default function BurnoutScreen({ navigation }) {
         <View style={styles.insightCard}>
           <Animated.View style={[styles.scoreRingBackground, {
             transform: [{ scale: breatheAnim }],
-            backgroundColor: insight?.burnoutRiskScore?.includes('Good') ? '#A8E6CF' :
-              insight?.burnoutRiskScore?.includes('Attention') ? '#FFD3B6' : '#EAE6DF'
+            backgroundColor: 
+              insight?.burnoutRiskScore === 'Doing Good!' ? '#A8E6CF' :
+              insight?.burnoutRiskScore === 'Needs Attention' ? '#FFD3B6' :
+              insight?.burnoutRiskScore === 'Moderate' ? '#F2E1A8' : '#EAE6DF'
           }]}>
             <TouchableOpacity style={styles.scoreCircle} onPress={handleCirclePress}>
               {insight ? (
                 <>
-                  <Text style={styles.scoreLabel}>Score</Text>
                   <Text style={styles.scoreValue}>{insight.burnoutRiskScore}</Text>
                 </>
               ) : (

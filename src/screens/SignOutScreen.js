@@ -12,7 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { format, subDays } from 'date-fns';
 
-export default function SignOutScreen() {
+export default function SignOutScreen({ navigation }) {
   const user = auth.currentUser;
   const [calendarSyncEnabled, setCalendarSyncEnabledState] = useState(false);
   const [lastSync, setLastSync] = useState(null);
@@ -53,7 +53,13 @@ export default function SignOutScreen() {
       Alert.alert(
         'Calendar Sync Enabled',
         'Today\'s calendar events will be automatically imported and categorized when you view your schedule.',
-        [{ text: 'OK' }]
+        [{ 
+          text: 'OK',
+          onPress: () => {
+            // Navigate to Schedule tab to trigger sync
+            navigation.navigate('Schedule');
+          }
+        }]
       );
     }
   };
