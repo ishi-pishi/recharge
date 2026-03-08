@@ -16,6 +16,7 @@ import { format, subDays, isSameDay } from 'date-fns';
 import { saveActivity, fetchActivitiesByDate, deleteActivity } from '../config/api';
 import { auth } from '../config/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import { getCalendarSyncEnabled, syncCalendarEvents } from '../config/calendarSync';
 export const CATEGORY_INFO = {
   'Work': { emoji: '💼', color: '#C9D6ED' },
   'Sleep': { emoji: '🌙', color: '#D0E5C9' },
@@ -73,6 +74,13 @@ export default function ScheduleScreen() {
       }
       setLoadingTasks(true);
       try {
+        // Check if calendar sync is enabled and sync today's events if viewing today
+        const syncEnabled = await getCalendarSyncEnabled();
+        const isToday = isSameDay(selectedDate, new Date());
+        if (syncEnabled && isToday) {
+          await syncCalendarEvents(selectedDate);
+        }
+        
         const data = await fetchActivitiesByDate(selectedDate);
         if (!cancelled) setActivities(data);
       } catch (err) {
@@ -258,6 +266,10 @@ export default function ScheduleScreen() {
 
   const dailySummary = calculateDailySummary();
 
+  // Separate calendar events from manual activities
+  const manualActivities = activities.filter(act => !act.calendarEventId);
+  const calendarActivities = activities.filter(act => act.calendarEventId);
+
   const [dateOffset, setDateOffset] = useState(0);
 
   const renderDateSelector = () => {
@@ -315,7 +327,7 @@ export default function ScheduleScreen() {
         </View>
       ) : (
         <FlatList
-          data={activities}
+          data={manualActivities}
           ListHeaderComponent={() => (
             <View style={styles.summarySection}>
               <Text style={styles.summaryTitle}>Today's Summary</Text>
@@ -335,6 +347,35 @@ export default function ScheduleScreen() {
               <Ionicons name="sunny-outline" size={60} color="#D0E5C9" style={{ marginBottom: 12 }} />
               <Text style={styles.emptyActivitiesText}>No activities logged yet</Text>
             </View>
+          )}
+          ListFooterComponent={() => (
+            calendarActivities.length > 0 ? (
+              <View style={styles.calendarSection}>
+                <Text style={styles.calendarSectionTitle}>From Calendar</Text>
+                {calendarActivities.map((item) => (
+                  <View key={item.id} style={[styles.activityItem, { borderLeftColor: CATEGORY_INFO[item.category]?.color || '#EAE6DF' }]}>
+                    <View style={styles.activityContent}>
+                      <View style={styles.activityHeader}>
+                        <Ionicons name="calendar" size={20} color="#C9D6ED" style={{ marginRight: 8 }} />
+                        <Text style={styles.activityTitle}>{item.category}</Text>
+                      </View>
+                      <Text style={styles.activityDuration}>
+                        {item.startTime && item.endTime ? `${item.startTime} - ${item.endTime}` : 'No time recorded'}
+                      </Text>
+                      {item.calendarEventTitle && (
+                        <Text style={styles.calendarEventTitle}>{item.calendarEventTitle}</Text>
+                      )}
+                    </View>
+                    <TouchableOpacity 
+                      style={styles.deleteButton}
+                      onPress={() => handleDeleteActivity(item.id)}
+                    >
+                      <Ionicons name="trash-outline" size={20} color="#F2C7AD" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            ) : null
           )}
           renderItem={({ item }) => (
             <View style={[styles.activityItem, { borderLeftColor: CATEGORY_INFO[item.category]?.color || '#EAE6DF' }]}>
@@ -734,6 +775,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     fontFamily: 'Lora_500Medium',
+  },
+  calendarSection: {
+    marginTop: 24,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#EAE6DF',
+  },
+  calendarSectionTitle: {
+    fontSize: 16,
+    fontFamily: 'Lora_700Bold',
+    color: '#777',
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  calendarEventTitle: {
+    fontSize: 12,
+    fontFamily: 'Quicksand_600SemiBold',
+    color: '#999',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   activityItem: {
     backgroundColor: '#FFFFFF',

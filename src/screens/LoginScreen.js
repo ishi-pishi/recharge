@@ -71,7 +71,7 @@ export default function LoginScreen() {
       <View style={styles.content}>
         <View style={styles.headerContainer}>
           <Image source={require('../../assets/recharge_logo.png')} style={styles.logo} resizeMode="contain" />
-          <Text style={styles.subtitle}>Track your schedule, avoid burnout.</Text>
+          <Text style={styles.subtitle}>Balance made easy.</Text>
         </View>
 
         <View style={styles.formContainer}>
