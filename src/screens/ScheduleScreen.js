@@ -16,8 +16,14 @@ import { format, subDays, isSameDay } from 'date-fns';
 import { saveActivity, fetchActivitiesByDate } from '../config/api';
 import { auth } from '../config/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-
-const CATEGORIES = ['Work', 'Sleep', 'Exercise', 'Socializing', 'Leisure/Self-Care'];
+export const CATEGORY_INFO = {
+  'Work': { emoji: '💼', color: '#C9D6ED' },
+  'Sleep': { emoji: '🌙', color: '#D0E5C9' },
+  'Exercise': { emoji: '💪', color: '#F2C7AD' },
+  'Socializing': { emoji: '🗣️', color: '#F2E1A8' },
+  'Leisure/Self-Care': { emoji: '🧘', color: '#D2D6E8' },
+};
+const CATEGORIES = Object.keys(CATEGORY_INFO);
 const HOURS = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
 const MINUTES = Array.from({ length: 12 }, (_, i) => (i * 5).toString().padStart(2, '0'));
 
@@ -45,7 +51,7 @@ export default function ScheduleScreen() {
 
   // Timer State
   const [timerRunning, setTimerRunning] = useState(false);
-  const [timerSeconds, setTimerSeconds] = useState(0);
+  const [timerStartTime, setTimerStartTime] = useState(null);
   const timerRef = useRef(null);
 
   // auth listener (run once)
@@ -82,17 +88,7 @@ export default function ScheduleScreen() {
     };
   }, [user, selectedDate]);
 
-  // timer interval
-  useEffect(() => {
-    if (timerRunning) {
-      timerRef.current = setInterval(() => {
-        setTimerSeconds(prev => prev + 1);
-      }, 1000);
-    } else {
-      clearInterval(timerRef.current);
-    }
-    return () => clearInterval(timerRef.current);
-  }, [timerRunning]);
+  // No live timer interval needed anymore
 
   const formatTimer = (secs) => {
     const h = Math.floor(secs / 3600);
@@ -126,13 +122,35 @@ export default function ScheduleScreen() {
       return;
     }
 
-    if (eTime <= sTime) {
-      alert('End time must be after start time. (Overnight activities are not supported yet)');
+    let duration = eTime - sTime;
+    if (duration <= 0) {
+      duration = (24 - sTime) + eTime; // handle overnight wrap-around
+    }
+
+    const checkOverlap = (s1, e1, s2, e2) => {
+      const int1 = s1 < e1 ? [[s1, e1]] : [[s1, 24], [0, e1]];
+      const int2 = s2 < e2 ? [[s2, e2]] : [[s2, 24], [0, e2]];
+      for (const [aStart, aEnd] of int1) {
+        for (const [bStart, bEnd] of int2) {
+          if (Math.max(aStart, bStart) < Math.min(aEnd, bEnd)) return true;
+        }
+      }
+      return false;
+    };
+
+    const hasOverlap = activities.some(act => {
+      if (!act.startTime || !act.endTime) return false;
+      const actStart = parseTime(act.startTime);
+      const actEnd = parseTime(act.endTime);
+      if (actStart === null || actEnd === null) return false;
+      return checkOverlap(sTime, eTime, actStart, actEnd);
+    });
+
+    if (hasOverlap) {
+      alert('This limits overlapping. Please select a time that does not overlap with existing activities.');
       setIsSaving(false);
       return;
     }
-
-    let duration = eTime - sTime;
 
     const payload = {
       category: selectedCategory,
@@ -176,8 +194,13 @@ export default function ScheduleScreen() {
       return;
     }
 
+    if (!timerStartTime) return;
+
     setIsSaving(true);
-    const hours = timerSeconds / 3600;
+    const durationMs = Date.now() - timerStartTime;
+    const hours = durationMs / (1000 * 60 * 60);
+    
+    // Safety check: if less than 1 minute, don't log or round it, but we'll log exact for now
     const payload = {
       category: selectedCategory,
       durationHours: hours,
@@ -194,7 +217,7 @@ export default function ScheduleScreen() {
       } else {
         setActivities(prev => [{ id: `${Date.now()}`, ...payload }, ...prev]);
       }
-      setTimerSeconds(0);
+      setTimerStartTime(null);
       setTimerRunning(false);
     } catch (err) {
       console.error('Failed to save timer activity:', err);
@@ -235,11 +258,11 @@ export default function ScheduleScreen() {
 
       {loadingTasks ? (
         <View style={styles.emptyContainer}>
-          <ActivityIndicator size="large" color="#7b9ed8" />
+          <ActivityIndicator size="large" color="#C9D6ED" />
         </View>
       ) : activities.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="sunny-outline" size={80} color="#8ed89e" style={{ marginBottom: 12 }} />
+          <Ionicons name="sunny-outline" size={80} color="#D0E5C9" style={{ marginBottom: 12 }} />
           <Text style={styles.emptyTitle}>Nothing here yet!</Text>
           <Text style={styles.emptySubtitle}>You haven't added any activities for this day.</Text>
         </View>
@@ -247,12 +270,18 @@ export default function ScheduleScreen() {
         <FlatList
           data={activities}
           renderItem={({ item }) => (
-            <View style={[styles.activityItem, { borderLeftColor: item.category.includes('Work') || item.category.includes('Socializing') ? '#7b9ed8' : '#8ed89e' }]}>
+            <View style={[styles.activityItem, { borderLeftColor: CATEGORY_INFO[item.category]?.color || '#EAE6DF' }]}>
               <View style={styles.activityHeader}>
                 <Ionicons
-                  name={item.category?.includes('Work') ? 'briefcase' : item.category?.includes('Sleep') ? 'moon' : 'fitness'}
+                  name={
+                    item.category?.includes('Work') ? 'briefcase' :
+                    item.category?.includes('Sleep') ? 'moon' :
+                    item.category?.includes('Exercise') ? 'fitness' :
+                    item.category?.includes('Socializing') ? 'chatbubbles' : 'leaf'
+                  }
                   size={20}
                   color="#555"
+                  style={{ marginRight: 8 }}
                 />
                 <Text style={styles.activityTitle}>{item.category}</Text>
               </View>
@@ -266,14 +295,16 @@ export default function ScheduleScreen() {
         />
       )}
 
-      <View style={styles.fabContainer}>
-        <TouchableOpacity style={styles.fabSecondary} onPress={() => setTimerModalVisible(true)}>
-          <Ionicons name="time" size={24} color="#FFF" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.fabPrimary} onPress={() => setAddModalVisible(true)}>
-          <Ionicons name="add" size={32} color="#000" />
-        </TouchableOpacity>
-      </View>
+      {!timerRunning && (
+        <View style={styles.fabContainer}>
+          <TouchableOpacity style={styles.fabSecondary} onPress={() => setTimerModalVisible(true)}>
+            <Ionicons name="time" size={24} color="#FFF" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.fabPrimary} onPress={() => setAddModalVisible(true)}>
+            <Ionicons name="add" size={32} color="#000" />
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Add Activity Modal */}
       <Modal visible={addModalVisible} animationType="slide" transparent={true}>
@@ -286,10 +317,12 @@ export default function ScheduleScreen() {
               {CATEGORIES.map(cat => (
                 <TouchableOpacity
                   key={cat}
-                  style={[styles.categoryPill, selectedCategory === cat && styles.categoryPillActive]}
+                  style={[styles.categoryPill, selectedCategory === cat && { backgroundColor: CATEGORY_INFO[cat].color }]}
                   onPress={() => setSelectedCategory(cat)}
                 >
-                  <Text style={[styles.categoryText, selectedCategory === cat && styles.categoryTextActive]}>{cat}</Text>
+                  <Text style={[styles.categoryText, selectedCategory === cat && styles.categoryTextActive]}>
+                    {CATEGORY_INFO[cat].emoji} {cat}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -313,7 +346,7 @@ export default function ScheduleScreen() {
             </TouchableOpacity>
 
             <Text style={styles.label}>End Time</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.input}
               onPress={() => {
                 setTimePickerMode('end');
@@ -343,46 +376,71 @@ export default function ScheduleScreen() {
       </Modal>
 
       {/* Timer Modal */}
-      <Modal visible={timerModalVisible} animationType="slide" transparent={true}>
+      <Modal visible={timerModalVisible} animationType="fade" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Live Timer</Text>
+            <Text style={styles.modalTitle}>{timerRunning ? 'Activity In Progress' : 'Start Activity'}</Text>
 
             <Text style={styles.label}>What are you doing?</Text>
             <View style={styles.categoryRow}>
               {CATEGORIES.map(cat => (
                 <TouchableOpacity
                   key={cat}
-                  style={[styles.categoryPill, selectedCategory === cat && styles.categoryPillActive]}
+                  disabled={timerRunning}
+                  style={[
+                    styles.categoryPill,
+                    selectedCategory === cat && { backgroundColor: CATEGORY_INFO[cat].color },
+                    timerRunning && selectedCategory !== cat && { opacity: 0.3 }
+                  ]}
                   onPress={() => setSelectedCategory(cat)}
                 >
-                  <Text style={[styles.categoryText, selectedCategory === cat && styles.categoryTextActive]}>{cat}</Text>
+                  <Text style={[styles.categoryText, selectedCategory === cat && styles.categoryTextActive]}>
+                    {CATEGORY_INFO[cat].emoji} {cat}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            <View style={styles.timerDisplay}>
-              <Text style={styles.timerText}>{formatTimer(timerSeconds)}</Text>
-            </View>
-
             <View style={styles.modalActionRow}>
-              <TouchableOpacity
-                style={[styles.modalButtonPrimary, { backgroundColor: timerRunning ? '#eda09a' : '#8ed89e', flex: 1, marginRight: 8 }]}
-                onPress={() => setTimerRunning(!timerRunning)}
-              >
-                <Text style={styles.modalButtonTextPrimary}>{timerRunning ? 'Stop' : 'Start'}</Text>
-              </TouchableOpacity>
-
-              {(!timerRunning && timerSeconds > 0) && (
-                <TouchableOpacity style={[styles.modalButtonPrimary, { flex: 1, marginLeft: 8, backgroundColor: '#7b9ed8' }]} onPress={saveTimerActivity} disabled={isSaving}>
-                  {isSaving ? <ActivityIndicator color="#FFF" /> : <Text style={[styles.modalButtonTextPrimary, { color: '#FFF' }]}>Log Activity</Text>}
+              {!timerRunning ? (
+                <TouchableOpacity
+                  style={[styles.modalButtonPrimary, { backgroundColor: '#D0E5C9', flex: 1, marginRight: 8 }]}
+                  onPress={() => {
+                    setTimerStartTime(Date.now());
+                    setTimerRunning(true);
+                    setTimerModalVisible(false);
+                  }}
+                >
+                  <Text style={styles.modalButtonTextPrimary}>Start Now</Text>
                 </TouchableOpacity>
+              ) : (
+                <>
+                  <TouchableOpacity
+                    style={[styles.modalButtonSecondary, { flex: 1, marginRight: 8, borderColor: '#F2C7AD' }]}
+                    onPress={() => {
+                      setTimerStartTime(null);
+                      setTimerRunning(false);
+                      setTimerModalVisible(false);
+                    }}
+                  >
+                    <Text style={styles.modalButtonTextSecondary}>Discard</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalButtonPrimary, { flex: 1, marginLeft: 8, backgroundColor: '#F2C7AD' }]}
+                    onPress={saveTimerActivity}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? <ActivityIndicator color="#3E2723" /> : <Text style={styles.modalButtonTextPrimary}>Stop & Save</Text>}
+                  </TouchableOpacity>
+                </>
               )}
             </View>
 
-            <TouchableOpacity style={{ alignItems: 'center', marginTop: 16 }} onPress={() => { setTimerModalVisible(false); setTimerRunning(false); setTimerSeconds(0); }}>
-              <Text style={styles.modalButtonTextSecondary}>Close Timer</Text>
-            </TouchableOpacity>
+            {!timerRunning && (
+              <TouchableOpacity style={{ alignItems: 'center', marginTop: 16 }} onPress={() => setTimerModalVisible(false)}>
+                <Text style={styles.modalButtonTextSecondary}>Close</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </Modal>
@@ -447,6 +505,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FDFBF7',
   },
+  inProgressBanner: {
+    backgroundColor: '#D0E5C9',
+    padding: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inProgressText: {
+    color: '#3E2723',
+    fontFamily: 'Lora_700Bold',
+    fontSize: 14,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EAE6DF',
+  },
+  headerTitle: {
+    fontSize: 32,
+    fontFamily: 'Lora_700Bold',
+    color: '#3E2723',
+  },
   dateSelector: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -462,21 +544,21 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   dateItemSelected: {
-    backgroundColor: '#7b9ed8',
+    backgroundColor: '#C9D6ED',
   },
   dateDay: {
     fontSize: 12,
     color: '#888',
     marginBottom: 4,
-    fontFamily: 'Quicksand_600SemiBold',
+    fontFamily: 'Lora_600SemiBold',
   },
   dateNumber: {
     fontSize: 18,
     color: '#555',
-    fontFamily: 'Quicksand_700Bold',
+    fontFamily: 'Lora_700Bold',
   },
   dateTextSelected: {
-    color: '#FFF',
+    color: '#3E2723',
   },
   emptyContainer: {
     flex: 1,
@@ -485,15 +567,15 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 24,
-    fontFamily: 'Quicksand_700Bold',
-    color: '#2A2724',
+    fontFamily: 'Lora_700Bold',
+    color: '#3E2723',
     marginTop: 16,
   },
   emptySubtitle: {
     fontSize: 15,
     color: '#777',
     marginTop: 8,
-    fontFamily: 'Quicksand_500Medium',
+    fontFamily: 'Lora_500Medium',
   },
   listContainer: {
     padding: 16,
@@ -516,15 +598,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   activityTitle: {
-    color: '#2A2724',
+    color: '#3E2723',
     fontSize: 18,
-    fontFamily: 'Quicksand_700Bold',
-    marginLeft: 12,
+    fontFamily: 'Lora_700Bold',
   },
   activityDuration: {
     color: '#777',
     fontSize: 14,
-    fontFamily: 'Quicksand_600SemiBold',
+    fontFamily: 'Lora_600SemiBold',
   },
   fabContainer: {
     position: 'absolute',
@@ -537,11 +618,11 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#7b9ed8',
+    backgroundColor: '#C9D6ED',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
-    shadowColor: '#7b9ed8',
+    shadowColor: '#C9D6ED',
     shadowOpacity: 0.4,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 8,
@@ -551,10 +632,10 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#8ed89e',
+    backgroundColor: '#F2C7AD',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#8ed89e',
+    shadowColor: '#F2C7AD',
     shadowOpacity: 0.4,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 12,
@@ -579,14 +660,14 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 26,
-    fontFamily: 'Quicksand_700Bold',
-    color: '#2A2724',
+    fontFamily: 'Lora_700Bold',
+    color: '#3E2723',
     marginBottom: 24,
   },
   label: {
     fontSize: 14,
     color: '#777',
-    fontFamily: 'Quicksand_700Bold',
+    fontFamily: 'Lora_700Bold',
     marginBottom: 12,
   },
   categoryRow: {
@@ -607,10 +688,10 @@ const styles = StyleSheet.create({
   categoryText: {
     color: '#666',
     fontSize: 14,
-    fontFamily: 'Quicksand_600SemiBold',
+    fontFamily: 'Lora_600SemiBold',
   },
   categoryTextActive: {
-    color: '#FFF',
+    color: '#3E2723', // Because pastel backgrounds are light, use dark text when active
   },
   input: {
     backgroundColor: '#FFFFFF',
@@ -618,9 +699,9 @@ const styles = StyleSheet.create({
     borderColor: '#EAE6DF',
     borderRadius: 16,
     padding: 16,
-    color: '#2A2724',
+    color: '#3E2723',
     fontSize: 16,
-    fontFamily: 'Quicksand_500Medium',
+    fontFamily: 'Lora_500Medium',
     marginBottom: 32,
   },
   modalActionRow: {
@@ -633,7 +714,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 8,
     borderRadius: 16,
-    backgroundColor: '#EAE6DF',
+    backgroundColor: '#FDFBF7',
+    borderWidth: 1,
+    borderColor: '#F2C7AD',
   },
   modalButtonPrimary: {
     flex: 1,
@@ -641,16 +724,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: 8,
     borderRadius: 16,
-    backgroundColor: '#8ed89e',
+    backgroundColor: '#D0E5C9',
   },
   modalButtonTextSecondary: {
-    color: '#555',
-    fontFamily: 'Quicksand_700Bold',
+    color: '#F2C7AD',
+    fontFamily: 'Lora_700Bold',
     fontSize: 16,
   },
   modalButtonTextPrimary: {
-    color: '#FFF',
-    fontFamily: 'Quicksand_700Bold',
+    color: '#3E2723', // Using dark text for light pastel green button
+    fontFamily: 'Lora_700Bold',
     fontSize: 16,
   },
   timerDisplay: {
@@ -660,7 +743,7 @@ const styles = StyleSheet.create({
   },
   timerText: {
     fontSize: 72,
-    fontFamily: 'Quicksand_400Regular',
+    fontFamily: 'Nunito_400Regular',
     color: '#2A2724',
     fontVariant: ['tabular-nums'],
   },
@@ -709,10 +792,10 @@ const styles = StyleSheet.create({
   timeOptionText: {
     color: '#666',
     fontSize: 18,
-    fontFamily: 'Quicksand_600SemiBold',
+    fontFamily: 'Nunito_600SemiBold',
   },
   timeOptionTextSelected: {
-    color: '#7b9ed8',
-    fontFamily: 'Quicksand_700Bold',
+    color: '#C9D6ED',
+    fontFamily: 'Nunito_700Bold',
   },
 });

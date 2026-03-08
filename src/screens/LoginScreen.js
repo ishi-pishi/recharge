@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Image } from 'react-native';
 import { auth } from '../config/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 
@@ -70,32 +70,32 @@ export default function LoginScreen() {
     >
       <View style={styles.content}>
         <View style={styles.headerContainer}>
-          <Text style={styles.title}>Healthful</Text>
+          <Image source={require('../../assets/recharge_logo.png')} style={styles.logo} resizeMode="contain" />
           <Text style={styles.subtitle}>Track your schedule, avoid burnout.</Text>
         </View>
 
         <View style={styles.formContainer}>
           <Text style={styles.formTitle}>{isLogin ? 'Login' : 'Sign Up'}</Text>
 
-          <Text style={styles.label}>Email Address</Text>
           <TextInput
             style={styles.input}
-            placeholder="hello@example.com"
+            placeholder="Email (hello@example.com)"
             placeholderTextColor="#666"
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
             keyboardType="email-address"
+            textAlign="center"
           />
 
-          <Text style={styles.label}>Password</Text>
           <TextInput
             style={styles.input}
-            placeholder="••••••••"
+            placeholder="Password (••••••••)"
             placeholderTextColor="#666"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
+            textAlign="center"
           />
 
           {isLogin && (
@@ -142,25 +142,26 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
+    alignItems: 'center',
   },
   headerContainer: {
     marginBottom: 48,
+    alignItems: 'center',
   },
-  title: {
-    fontSize: 42,
-    fontFamily: 'Quicksand_700Bold',
-    color: '#2A2724',
+  logo: {
+    width: 250,
+    height: 120,
     marginBottom: 8,
-    letterSpacing: -1,
   },
   subtitle: {
     fontSize: 16,
     color: '#777777',
-    fontFamily: 'Quicksand_600SemiBold',
+    fontFamily: 'Lora_600SemiBold',
+    textAlign: 'center',
   },
   formContainer: {
     backgroundColor: '#FFFFFF',
-    padding: 24,
+    padding: 32,
     borderRadius: 24,
     borderWidth: 1,
     borderColor: '#EAE6DF',
@@ -169,39 +170,43 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 20,
     elevation: 4,
+    width: '100%',
+    alignItems: 'stretch',
   },
   formTitle: {
     fontSize: 24,
-    fontFamily: 'Quicksand_700Bold',
-    color: '#2A2724',
-    marginBottom: 20,
+    fontFamily: 'Lora_700Bold',
+    color: '#3E2723',
+    marginBottom: 24,
     textAlign: 'center',
   },
   label: {
     fontSize: 14,
-    fontFamily: 'Quicksand_700Bold',
+    fontFamily: 'Lora_700Bold',
     color: '#666666',
     marginBottom: 8,
     marginLeft: 4,
+    textAlign: 'center',
   },
   input: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
-    color: '#2A2724',
+    color: '#3E2723',
     fontSize: 16,
-    fontFamily: 'Quicksand_500Medium',
+    fontFamily: 'Lora_500Medium',
     marginBottom: 20,
     borderWidth: 1,
     borderColor: '#EAE6DF',
+    textAlign: 'center',
   },
   primaryButton: {
-    backgroundColor: '#8ed89e',
+    backgroundColor: '#D0E5C9',
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
     marginTop: 8,
-    shadowColor: '#8ed89e',
+    shadowColor: '#D0E5C9',
     shadowOpacity: 0.3,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 8,
@@ -210,17 +215,17 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontFamily: 'Quicksand_700Bold',
+    fontFamily: 'Lora_700Bold',
   },
   forgotPasswordContainer: {
-    alignSelf: 'flex-end',
-    marginBottom: 20,
+    alignSelf: 'center',
+    marginBottom: 24,
     marginTop: -8,
   },
   forgotPasswordText: {
-    color: '#7b9ed8',
+    color: '#C9D6ED',
     fontSize: 14,
-    fontFamily: 'Quicksand_600SemiBold',
+    fontFamily: 'Lora_600SemiBold',
   },
   secondaryButton: {
     marginTop: 20,
@@ -229,6 +234,6 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     color: '#888',
     fontSize: 14,
-    fontFamily: 'Quicksand_600SemiBold',
+    fontFamily: 'Lora_600SemiBold',
   },
 });

@@ -1,12 +1,45 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Animated, Modal, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { fetchLast7DaysActivities } from '../config/api';
+import { fetchLast7DaysActivities, fetchActivitiesByDate } from '../config/api';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+
+const CATEGORY_INFO = {
+  'Work': { emoji: '💼', color: '#C9D6ED' },
+  'Sleep': { emoji: '🌙', color: '#D0E5C9' },
+  'Exercise': { emoji: '💪', color: '#F2C7AD' },
+  'Socializing': { emoji: '🗣️', color: '#F2E1A8' },
+  'Leisure/Self-Care': { emoji: '🧘', color: '#D2D6E8' },
+};
 
 export default function BurnoutScreen() {
   const [loading, setLoading] = useState(false);
   const [insight, setInsight] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [todaySummary, setTodaySummary] = useState({});
+  const breatheAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(breatheAnim, { toValue: 1.05, duration: 2000, useNativeDriver: true }),
+        Animated.timing(breatheAnim, { toValue: 1, duration: 2000, useNativeDriver: true })
+      ])
+    ).start();
+
+    const fetchToday = async () => {
+      try {
+        const activities = await fetchActivitiesByDate(new Date());
+        const summary = activities.reduce((acc, act) => {
+          if (!acc[act.category]) acc[act.category] = 0;
+          acc[act.category] += act.durationHours;
+          return acc;
+        }, {});
+        setTodaySummary(summary);
+      } catch (err) {}
+    };
+    fetchToday();
+  }, [breatheAnim]);
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -30,6 +63,7 @@ export default function BurnoutScreen() {
         scheduleText = "I have not logged any activities in the past 7 days.";
       }
 
+      // Removed isolated daily calculation string builder
       // 3. Prompt Gemini for suggestions only
       const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
       if (!apiKey) {
@@ -40,13 +74,18 @@ export default function BurnoutScreen() {
       const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
 
       const prompt = `
-        You are a burnout and self-care assistant. Read the user's activity log for the last 7 days and provide a concise recommendation to reduce burnout and improve balance.
+        You are a supportive burnout and self-care AI assistant. 
+        Analyze the user's 7-day activity log, weighing all categories fairly to determine a balanced 'Burnout Score'. If they have too much work and no sleep/leisure, the score is 'Needs Attention'. If perfectly balanced, the score is 'Doing Good!'. 
+        The only valid score outputs are: 'Doing Good!', 'Moderate', or 'Needs Attention'.
+        Provide a BRIEF (1-2 sentence) explanation of why they received this score.
+
         Activities:
         ${scheduleText}
 
-        Respond EXACTLY in this JSON format, and nothing else (do not include markdown ticks \`\`\`json):
+        Respond EXACTLY in this JSON format, and nothing else:
         {
-          "suggestion": "..."
+          "burnoutRiskScore": "Doing Good! | Moderate | Needs Attention",
+          "explanation": "..."
         }
       `;
 
@@ -57,7 +96,7 @@ export default function BurnoutScreen() {
       const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
       const parsed = JSON.parse(cleanedText);
-      setInsight(parsed);
+      setInsight({ ...parsed });
     } catch (error) {
       console.error("Gemini AI Error:", error);
       setInsight({ suggestion: "Error fetching suggestions. Please check your network or API limits." });
@@ -69,9 +108,9 @@ export default function BurnoutScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Ionicons name="sparkles" size={32} color="#7b9ed8" />
-        <Text style={styles.title}>AI Recommendations</Text>
-        <Text style={styles.subtitle}>Get personalized suggestions based on your recent schedule.</Text>
+        <Ionicons name="sparkles" size={32} color="#C9D6ED" />
+        <Text style={styles.title}>Burnout</Text>
+        <Text style={styles.subtitle}>Get personalized burnout advice and daily insights.</Text>
       </View>
 
       {!insight && !loading && (
@@ -82,7 +121,7 @@ export default function BurnoutScreen() {
 
       {loading && (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8ed89e" />
+          <ActivityIndicator size="large" color="#D0E5C9" />
           <Text style={styles.loadingText}>Gemini is generating your recommendation...</Text>
         </View>
       )}
@@ -90,15 +129,54 @@ export default function BurnoutScreen() {
       {insight && !loading && (
         <View style={styles.insightCard}>
 
-          <Text style={styles.suggestionTitle}>Suggestions</Text>
-          <Text style={styles.suggestionText}>{insight.suggestion}</Text>
+          <Animated.View style={[styles.scoreRingBackground, { 
+            transform: [{ scale: breatheAnim }],
+            backgroundColor: insight.burnoutRiskScore?.includes('Good') ? '#A8E6CF' : 
+                             insight.burnoutRiskScore?.includes('Attention') ? '#FFD3B6' : '#EAE6DF'
+          }]}>
+            <TouchableOpacity style={styles.scoreCircle} onPress={() => setModalVisible(true)}>
+              <Text style={styles.scoreLabel}>Score</Text>
+              <Text style={styles.scoreValue}>{insight.burnoutRiskScore}</Text>
+              <Text style={styles.scoreTapHint}>Tap for details</Text>
+            </TouchableOpacity>
+          </Animated.View>
+
+          <View style={styles.dailyBarsContainer}>
+            <Text style={styles.dailyBarsTitle}>Today's Breakdown</Text>
+            {Object.keys(CATEGORY_INFO).map((cat, idx) => (
+              <View key={idx} style={styles.barRow}>
+                <Text style={styles.barLabel}>{CATEGORY_INFO[cat]?.emoji} {cat}</Text>
+                <View style={styles.barTrack}>
+                  <View style={[styles.barFill, { 
+                    backgroundColor: CATEGORY_INFO[cat]?.color || '#CCC',
+                    width: `${Math.min(((todaySummary[cat] || 0) / 12) * 100, 100)}%`
+                  }]} />
+                </View>
+                <Text style={styles.barTime}>{(todaySummary[cat] || 0).toFixed(1)}h</Text>
+              </View>
+            ))}
+          </View>
 
           <TouchableOpacity style={styles.refreshButton} onPress={handleGenerate}>
-            <Ionicons name="refresh" size={20} color="#8ed89e" />
-            <Text style={styles.refreshText}>Re-run</Text>
+            <Ionicons name="refresh" size={20} color="#F2C7AD" />
+            <Text style={styles.refreshText}>Recalculate</Text>
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Explanation Modal */}
+      <Modal visible={modalVisible} animationType="fade" transparent={true}>
+        <Pressable style={styles.modalOverlay} onPress={() => setModalVisible(false)}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Burnout Breakdown</Text>
+            <Text style={styles.modalText}>{insight?.explanation}</Text>
+            <TouchableOpacity style={styles.modalClose} onPress={() => setModalVisible(false)}>
+              <Text style={styles.modalCloseText}>Got it</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
+
     </ScrollView>
   );
 }
@@ -117,8 +195,8 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 32,
-    fontFamily: 'Quicksand_700Bold',
-    color: '#2A2724',
+    fontFamily: 'Lora_700Bold',
+    color: '#3E2723',
     marginTop: 16,
   },
   subtitle: {
@@ -126,14 +204,14 @@ const styles = StyleSheet.create({
     color: '#777777',
     marginTop: 8,
     lineHeight: 24,
-    fontFamily: 'Quicksand_500Medium',
+    fontFamily: 'Lora_500Medium',
   },
   generateButton: {
-    backgroundColor: '#8ed89e',
+    backgroundColor: '#D0E5C9',
     padding: 16,
     borderRadius: 16,
     alignItems: 'center',
-    shadowColor: '#8ed89e',
+    shadowColor: '#D0E5C9',
     shadowOpacity: 0.4,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 10,
@@ -142,7 +220,7 @@ const styles = StyleSheet.create({
   generateText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontFamily: 'Quicksand_700Bold',
+    fontFamily: 'Lora_700Bold',
   },
   loadingContainer: {
     padding: 48,
@@ -150,10 +228,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadingText: {
-    color: '#8ed89e',
+    color: '#D0E5C9',
     marginTop: 16,
     fontSize: 16,
-    fontFamily: 'Quicksand_600SemiBold',
+    fontFamily: 'Lora_600SemiBold',
   },
   insightCard: {
     backgroundColor: '#FFFFFF',
@@ -167,33 +245,151 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 4,
   },
-  suggestionTitle: {
-    color: '#2A2724',
-    fontSize: 18,
-    fontFamily: 'Quicksand_700Bold',
+  scoreRingBackground: {
+    alignSelf: 'center',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 32,
+    marginTop: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 15,
+    elevation: 5,
+  },
+  scoreCircle: {
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 4,
+    borderColor: '#FDFBF7',
+  },
+  scoreLabel: {
+    color: '#777',
+    fontSize: 14,
+    fontFamily: 'Lora_700Bold',
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 4,
+  },
+  scoreValue: {
+    color: '#3E2723',
+    fontSize: 22,
+    fontFamily: 'Lora_700Bold',
+    textAlign: 'center',
+    paddingHorizontal: 8,
+  },
+  scoreTapHint: {
+    color: '#999',
+    fontSize: 12,
+    fontFamily: 'Lora_500Medium',
+    marginTop: 8,
+  },
+  dailyBarsContainer: {
+    marginBottom: 32,
+    backgroundColor: '#FDFBF7',
+    padding: 16,
+    borderRadius: 16,
+  },
+  dailyBarsTitle: {
+    fontSize: 16,
+    fontFamily: 'Lora_700Bold',
+    color: '#3E2723',
+    marginBottom: 16,
+  },
+  barRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 12,
   },
-  suggestionText: {
-    color: '#555555',
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 24,
-    fontFamily: 'Quicksand_600SemiBold',
+  barLabel: {
+    width: 100,
+    fontSize: 12,
+    fontFamily: 'Lora_600SemiBold',
+    color: '#555',
+  },
+  barTrack: {
+    flex: 1,
+    height: 12,
+    backgroundColor: '#EAE6DF',
+    borderRadius: 6,
+    marginHorizontal: 8,
+    overflow: 'hidden',
+  },
+  barFill: {
+    height: '100%',
+    borderRadius: 6,
+  },
+  barTime: {
+    width: 35,
+    fontSize: 12,
+    fontFamily: 'Lora_600SemiBold',
+    color: '#777',
+    textAlign: 'right',
   },
   refreshButton: {
     flexDirection: 'row',
     backgroundColor: '#FDFBF7',
-    borderWidth: 1,
-    borderColor: '#EAE6DF',
+    borderWidth: 2,
+    borderColor: '#F2C7AD',
     padding: 12,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   refreshText: {
-    color: '#666666',
-    fontFamily: 'Quicksand_700Bold',
+    color: '#F2C7AD',
+    fontFamily: 'Lora_700Bold',
     marginLeft: 8,
     fontSize: 14,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '85%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 20,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontFamily: 'Lora_700Bold',
+    color: '#3E2723',
+    marginBottom: 12,
+  },
+  modalText: {
+    fontSize: 16,
+    fontFamily: 'Lora_500Medium',
+    color: '#555',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 24,
+  },
+  modalClose: {
+    backgroundColor: '#C9D6ED',
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 16,
+  },
+  modalCloseText: {
+    color: '#3E2723',
+    fontFamily: 'Lora_700Bold',
+    fontSize: 16,
   },
 });

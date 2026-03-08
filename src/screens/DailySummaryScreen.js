@@ -5,11 +5,11 @@ import { format, subDays, isSameDay } from 'date-fns';
 import { fetchActivitiesByDate } from '../config/api';
 
 const CATEGORY_COLORS = {
-  'Work': '#7b9ed8', // muted light blue
-  'Sleep': '#8ed89e', // muted light green
-  'Exercise': '#eda09a', // muted coral/peach
-  'Socializing': '#FFD24D',
-  'Leisure/Self-Care': '#4DDFD2'
+  'Work': '#C9D6ED',        // Soft Blue
+  'Sleep': '#D0E5C9',       // Soft Green
+  'Exercise': '#F2C7AD',    // Soft Coral
+  'Socializing': '#F2E1A8', // Soft Yellow
+  'Leisure/Self-Care': '#D2D6E8' // Soft Purple
 };
 
 export default function DailySummaryScreen() {
@@ -91,7 +91,7 @@ export default function DailySummaryScreen() {
         </View>
       ) : activities.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="pie-chart-outline" size={80} color="#8ed89e" />
+          <Ionicons name="pie-chart-outline" size={80} color="#D0E5C9" />
           <Text style={styles.emptyTitle}>No Data for {format(selectedDate, 'MMM do')}</Text>
           <Text style={styles.emptySubtitle}>Track activities on the schedule screen to see your summary!</Text>
         </View>
@@ -99,7 +99,7 @@ export default function DailySummaryScreen() {
         <View style={styles.content}>
           {/* Top Stats Overview */}
           <View style={styles.statsCard}>
-            <Ionicons name="time" size={32} color="#7b9ed8" />
+            <Ionicons name="time" size={32} color="#C9D6ED" />
             <Text style={styles.totalHoursText}>{totalHours.toFixed(1)} <Text style={{ fontSize: 20 }}>hrs</Text></Text>
             <Text style={styles.statsSubtitle}>Total Logged Time</Text>
           </View>
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 28,
-    fontFamily: 'Quicksand_700Bold',
+    fontFamily: 'Nunito_700Bold',
     color: '#2A2724',
     paddingHorizontal: 16,
     paddingTop: 16,
@@ -166,21 +166,24 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   dateItemSelected: {
-    backgroundColor: '#8ed89e',
+    backgroundColor: '#D0E5C9',
   },
-  dateDay: {
-    fontSize: 12,
-    color: '#888',
+  dateItemDay: {
+    fontSize: 14,
+    color: '#777777',
     marginBottom: 4,
-    fontFamily: 'Quicksand_600SemiBold',
+    fontFamily: 'Lora_600SemiBold',
   },
-  dateNumber: {
-    fontSize: 18,
-    color: '#555',
-    fontFamily: 'Quicksand_700Bold',
+  dateItemDaySelected: {
+    color: '#3E2723',
   },
-  dateTextSelected: {
-    color: '#2A2724',
+  dateItemDate: {
+    fontSize: 20,
+    fontFamily: 'Lora_700Bold',
+    color: '#3E2723',
+  },
+  dateItemDateSelected: {
+    color: '#3E2723',
   },
   emptyContainer: {
     flex: 1,
@@ -189,18 +192,18 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 20,
-    fontFamily: 'Quicksand_700Bold',
-    color: '#2A2724',
+    fontFamily: 'Lora_700Bold',
+    color: '#3E2723',
     marginTop: 16,
   },
   emptySubtitle: {
-    fontSize: 15,
-    color: '#777',
+    fontSize: 16,
+    color: '#777777',
     marginTop: 8,
     width: '70%',
     textAlign: 'center',
     lineHeight: 20,
-    fontFamily: 'Quicksand_500Medium',
+    fontFamily: 'Lora_500Medium',
   },
   content: {
     flex: 1,
@@ -222,20 +225,20 @@ const styles = StyleSheet.create({
   },
   totalHoursText: {
     fontSize: 56,
-    fontFamily: 'Quicksand_700Bold',
-    color: '#2A2724',
+    fontFamily: 'Lora_700Bold',
+    color: '#3E2723',
     marginTop: 8,
   },
   statsSubtitle: {
     fontSize: 16,
     color: '#777',
-    fontFamily: 'Quicksand_600SemiBold',
+    fontFamily: 'Lora_600SemiBold',
     marginTop: 4,
   },
   sectionTitle: {
     fontSize: 20,
-    fontFamily: 'Quicksand_700Bold',
-    color: '#2A2724',
+    fontFamily: 'Lora_700Bold',
+    color: '#3E2723',
     marginBottom: 16,
   },
   breakdownItem: {
@@ -254,13 +257,13 @@ const styles = StyleSheet.create({
   },
   breakdownCategory: {
     fontSize: 16,
-    color: '#2A2724',
-    fontFamily: 'Quicksand_700Bold',
+    color: '#3E2723',
+    fontFamily: 'Lora_700Bold',
   },
   breakdownDuration: {
     fontSize: 16,
     color: '#666',
-    fontFamily: 'Quicksand_600SemiBold',
+    fontFamily: 'Lora_600SemiBold',
   },
   colorDot: {
     width: 12,

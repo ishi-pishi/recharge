@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, SafeAreaView, Image } from 'react-native';
 import { auth } from '../config/firebase';
 import { signOut } from 'firebase/auth';
 
@@ -15,17 +15,20 @@ export default function SignOutScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Account Settings</Text>
-        <Text style={styles.subtitle}>Signed in as:</Text>
-        <Text style={styles.email}>{user?.email || 'Unknown User'}</Text>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.content}>
+        <View style={styles.card}>
+          <Image source={require('../../assets/recharge_logo.png')} style={styles.logo} resizeMode="contain" />
+          <Text style={styles.title}>Account Settings</Text>
+          <Text style={styles.subtitle}>Signed in as:</Text>
+          <Text style={styles.email}>{user?.email || 'Unknown User'}</Text>
 
-        <TouchableOpacity style={styles.button} onPress={handleSignOut}>
-          <Text style={styles.buttonText}>Sign Out</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.button} onPress={handleSignOut}>
+            <Text style={styles.buttonText}>Sign Out</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -33,6 +36,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FDFBF7',
+  },
+  content: {
+    flex: 1,
     justifyContent: 'center',
     padding: 24,
   },
@@ -44,45 +50,52 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#EAE6DF',
     shadowColor: '#000',
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowOffset: { width: 0, height: 10 },
     shadowRadius: 20,
-    elevation: 5,
+    elevation: 4,
+  },
+  logo: {
+    width: 200,
+    height: 80,
+    marginBottom: 24,
   },
   title: {
     fontSize: 24,
-    fontFamily: 'Quicksand_700Bold',
-    color: '#2A2724',
+    fontFamily: 'Lora_700Bold',
+    color: '#3E2723',
     marginBottom: 24,
   },
   subtitle: {
     fontSize: 14,
     color: '#666666',
-    fontFamily: 'Quicksand_600SemiBold',
+    fontFamily: 'Lora_600SemiBold',
     marginBottom: 8,
   },
   email: {
     fontSize: 18,
-    color: '#2A2724',
-    fontFamily: 'Quicksand_600SemiBold',
+    color: '#3E2723',
+    fontFamily: 'Lora_600SemiBold',
     marginBottom: 32,
   },
   button: {
-    backgroundColor: '#eda09a',
+    backgroundColor: '#FDFBF7',
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#F2C7AD',
     width: '100%',
     alignItems: 'center',
-    shadowColor: '#eda09a',
-    shadowOpacity: 0.4,
+    shadowColor: '#F2C7AD',
+    shadowOpacity: 0.2,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 8,
     elevation: 4,
   },
   buttonText: {
-    color: '#FFF',
+    color: '#F2C7AD',
     fontSize: 16,
-    fontFamily: 'Quicksand_700Bold',
+    fontFamily: 'Lora_700Bold',
   },
 });

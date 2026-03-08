@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useState, useEffect } from 'react';
 import { auth } from './src/config/firebase';
-import { useFonts, Quicksand_400Regular, Quicksand_500Medium, Quicksand_600SemiBold, Quicksand_700Bold } from '@expo-google-fonts/quicksand';
+import { useFonts, Lora_400Regular, Lora_500Medium, Lora_600SemiBold, Lora_700Bold } from '@expo-google-fonts/lora';
 import { DefaultTheme } from '@react-navigation/native';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
@@ -13,7 +13,6 @@ import { StatusBar } from 'expo-status-bar';
 // Import Screens (to be created)
 import LoginScreen from './src/screens/LoginScreen';
 import ScheduleScreen from './src/screens/ScheduleScreen';
-import DailySummaryScreen from './src/screens/DailySummaryScreen';
 import BurnoutScreen from './src/screens/BurnoutScreen';
 import SignOutScreen from './src/screens/SignOutScreen';
 
@@ -30,10 +29,8 @@ function MainTabs() {
 
           if (route.name === 'Schedule') {
             iconName = focused ? 'calendar' : 'calendar-outline';
-          } else if (route.name === 'Summary') {
-            iconName = focused ? 'pie-chart' : 'pie-chart-outline';
-          } else if (route.name === 'AI Insights') {
-            iconName = focused ? 'bulb' : 'bulb-outline';
+          } else if (route.name === 'Burnout') {
+            iconName = focused ? 'sparkles' : 'sparkles-outline';
           } else if (route.name === 'Account') {
             iconName = focused ? 'person' : 'person-outline';
           }
@@ -43,7 +40,7 @@ function MainTabs() {
         tabBarActiveTintColor: '#7b9ed8', // Toned down blue
         tabBarInactiveTintColor: '#999999',
         tabBarLabelStyle: {
-          fontFamily: 'Quicksand_600SemiBold',
+          fontFamily: 'Lora_600SemiBold',
         },
         tabBarStyle: {
           backgroundColor: '#FDFBF7',
@@ -58,16 +55,15 @@ function MainTabs() {
           borderBottomWidth: 1,
           borderBottomColor: '#EAE6DF'
         },
-        headerTintColor: '#2A2724', // Warm dark black
+        headerTintColor: '#3E2723', // Dark Brown
         headerTitleStyle: {
-          fontFamily: 'Quicksand_700Bold',
-          color: '#2A2724'
+          fontFamily: 'Lora_700Bold',
+          color: '#3E2723'
         },
       })}
     >
       <Tab.Screen name="Schedule" component={ScheduleScreen} />
-      <Tab.Screen name="Summary" component={DailySummaryScreen} />
-      <Tab.Screen name="AI Insights" component={BurnoutScreen} />
+      <Tab.Screen name="Burnout" component={BurnoutScreen} />
       <Tab.Screen name="Account" component={SignOutScreen} />
     </Tab.Navigator>
   );
@@ -78,10 +74,10 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   let [fontsLoaded] = useFonts({
-    Quicksand_400Regular,
-    Quicksand_500Medium,
-    Quicksand_600SemiBold,
-    Quicksand_700Bold,
+    Lora_400Regular,
+    Lora_500Medium,
+    Lora_600SemiBold,
+    Lora_700Bold,
   });
 
   useEffect(() => {
@@ -108,7 +104,7 @@ export default function App() {
       ...DefaultTheme.colors,
       background: '#FDFBF7',
       card: '#FDFBF7',
-      text: '#2A2724',
+      text: '#3E2723',
       primary: '#7b9ed8'
     },
   };
