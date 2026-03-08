@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
 import { auth } from '../config/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -14,19 +14,54 @@ export default function LoginScreen() {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
+    if (!isLogin && password.length < 6) {
+      Alert.alert('Error', 'Password should be at least 6 characters');
+      return;
+    }
+    
     setLoading(true);
     try {
+      const trimmedEmail = email.trim();
       if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password);
+        await signInWithEmailAndPassword(auth, trimmedEmail, password);
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
+        await createUserWithEmailAndPassword(auth, trimmedEmail, password);
       }
     } catch (err) {
-      Alert.alert('Authentication Error', err.message);
+      let errorMessage = err.message;
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        errorMessage = 'Invalid email or password.';
+      } else if (err.code === 'auth/email-already-in-use') {
+        errorMessage = 'An account with this email already exists.';
+      } else if (err.code === 'auth/invalid-email') {
+        errorMessage = 'Please enter a valid email address.';
+      }
+      Alert.alert('Authentication Error', errorMessage);
     } finally {
       setLoading(false);
     }
   };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      Alert.alert('Error', 'Please enter your email address first to reset your password.');
+      return;
+    }
+    
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      Alert.alert('Success', 'Password reset email sent! Please check your inbox.');
+    } catch (err) {
+      let errorMessage = err.message;
+      if (err.code === 'auth/invalid-email') {
+        errorMessage = 'Please enter a valid email address.';
+      } else if (err.code === 'auth/user-not-found') {
+        errorMessage = 'No account found with this email.';
+      }
+      Alert.alert('Reset Error', errorMessage);
+    }
+  };
+
 
   return (
     <KeyboardAvoidingView 
@@ -40,6 +75,8 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.formContainer}>
+          <Text style={styles.formTitle}>{isLogin ? 'Login' : 'Sign Up'}</Text>
+
           <Text style={styles.label}>Email Address</Text>
           <TextInput
             style={styles.input}
@@ -60,6 +97,12 @@ export default function LoginScreen() {
             onChangeText={setPassword}
             secureTextEntry
           />
+
+          {isLogin && (
+            <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotPasswordContainer} disabled={loading}>
+              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity 
             style={styles.primaryButton}
@@ -127,6 +170,13 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 5,
   },
+  formTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
   label: {
     fontSize: 14,
     fontWeight: '600',
@@ -155,6 +205,16 @@ const styles = StyleSheet.create({
     color: '#000000',
     fontSize: 16,
     fontWeight: '700',
+  },
+  forgotPasswordContainer: {
+    alignSelf: 'flex-end',
+    marginBottom: 20,
+    marginTop: -8,
+  },
+  forgotPasswordText: {
+    color: '#A0A0A0',
+    fontSize: 14,
+    fontWeight: '600',
   },
   secondaryButton: {
     marginTop: 20,
