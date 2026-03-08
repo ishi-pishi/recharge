@@ -151,8 +151,8 @@ export default function BurnoutScreen({ navigation }) {
                 </>
               ) : (
                 <>
-                  <Text style={[styles.scoreLabel, { fontFamily: 'Quicksand_700Bold', fontSize: 28 }]}>Analyze</Text>
-                  <Text style={[styles.scoreTapHint, { marginTop: 4, fontFamily: 'Lora_600SemiBold' }]}>Tap to generate</Text>
+                  <Text style={[styles.scoreLabel, { fontFamily: 'Quicksand_700Bold', fontSize: 28, marginBottom: 0 }]}>Analyze</Text>
+                  <Text style={[styles.scoreTapHint, { marginTop: 8, fontFamily: 'Lora_600SemiBold' }]}>Tap to generate</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Lora_700Bold',
     textTransform: 'uppercase',
     letterSpacing: 2,
-    marginBottom: 4,
+    marginBottom: 8,
   },
   scoreValue: {
     color: '#3E2723',

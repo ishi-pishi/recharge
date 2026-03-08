@@ -20,8 +20,8 @@ export default function SignOutScreen() {
         <View style={styles.card}>
           <Image source={require('../../assets/recharge_logo.png')} style={styles.logo} resizeMode="contain" />
           <Text style={styles.title}>Account Settings</Text>
-          <Text style={styles.email}>{user?.email || 'Unknown User'}</Text>
           <Text style={styles.subtitle}>Signed in as</Text>
+          <Text style={styles.email}>{user?.email || 'Unknown User'}</Text>
 
           <TouchableOpacity style={styles.button} onPress={handleSignOut}>
             <Text style={styles.buttonText}>Sign Out</Text>
@@ -70,13 +70,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#777777',
     fontFamily: 'Quicksand_600SemiBold',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   email: {
     fontSize: 18,
     color: '#3E2723',
     fontFamily: 'Quicksand_600SemiBold',
-    marginTop: 8,
+    marginBottom: 24,
   },
   button: {
     backgroundColor: '#FDFBF7',
